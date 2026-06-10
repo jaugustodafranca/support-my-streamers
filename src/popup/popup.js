@@ -1,3 +1,5 @@
+import { t } from '../i18n.js';
+
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
 let toastTimer = null;
@@ -41,16 +43,19 @@ function showToast(message) {
   }, 3000);
 }
 
+const SLOTS = 2;
+
 function statusText(state) {
   const { rotation, settings, live } = state;
+  const lang = settings.lang || 'pt';
   const selectedLive = rotation.channels.filter((c) => live.some((s) => s.login === c)).length;
   if (rotation.status === 'playing') {
-    return `rotacionando ${Math.min(settings.slots, selectedLive)} de ${selectedLive} · troca a cada ${settings.intervalMinutes} min`;
+    return t(lang, 'status_playing', Math.min(SLOTS, selectedLive), selectedLive, settings.intervalMinutes);
   }
   if (rotation.status === 'paused') {
-    return `pausado · ${rotation.channels.length} na lista`;
+    return t(lang, 'status_paused', rotation.channels.length);
   }
-  return `${rotation.channels.length} selecionado${rotation.channels.length === 1 ? '' : 's'}`;
+  return t(lang, 'selected', rotation.channels.length);
 }
 
 function topbar() {
@@ -79,12 +84,14 @@ function render(state) {
     return;
   }
 
+  const lang = state.settings?.lang || 'pt';
+
   if (!state.authed) {
     app.appendChild(
       el(`<div class="hero">
         <h1 class="wordmark big">support<em>my</em>streamers</h1>
-        <p class="hero-sub">Apoie quem você acompanha deixando a live rolando enquanto faz outras coisas.</p>
-        <button class="play-btn wide" data-action="login">Conectar com a Twitch</button>
+        <p class="hero-sub">${escapeHtml(t(lang, 'hero_sub'))}</p>
+        <button class="play-btn wide" data-action="login">${escapeHtml(t(lang, 'connect'))}</button>
       </div>`),
     );
     return;
@@ -96,18 +103,18 @@ function render(state) {
 
   app.appendChild(el(topbar()));
   app.appendChild(
-    el(`<p class="greeting">olá, <strong>${escapeHtml(user.displayName || user.login)}</strong> · <button class="textlink" data-action="logout">sair</button></p>`),
+    el(`<p class="greeting">${escapeHtml(t(lang, 'hi'))} <strong>${escapeHtml(user.displayName || user.login)}</strong> · <button class="textlink" data-action="logout">${escapeHtml(t(lang, 'logout'))}</button></p>`),
   );
 
-  const playLabel = rotation.status === 'paused' ? 'Retomar' : 'Iniciar';
+  const playLabel = rotation.status === 'paused' ? t(lang, 'resume') : t(lang, 'start');
   app.appendChild(
     el(`<div class="dock">
       ${
         playing
-          ? '<button class="play-btn playing" data-action="pause">⏸ Pausar</button>'
-          : `<button class="play-btn" data-action="play">▶ ${playLabel}</button>`
+          ? `<button class="play-btn playing" data-action="pause">⏸ ${escapeHtml(t(lang, 'pause'))}</button>`
+          : `<button class="play-btn" data-action="play">▶ ${escapeHtml(playLabel)}</button>`
       }
-      <button class="ghost-btn" data-action="stop" ${rotation.status === 'stopped' ? 'disabled' : ''}>Parar</button>
+      <button class="ghost-btn" data-action="stop" ${rotation.status === 'stopped' ? 'disabled' : ''}>${escapeHtml(t(lang, 'stop'))}</button>
       <div class="ticker">${playing ? '<span class="pulse"></span>' : ''}${escapeHtml(statusText(state))}</div>
     </div>`),
   );
@@ -118,8 +125,8 @@ function render(state) {
     app.appendChild(
       el(`<div class="empty">
         <div class="empty-glyph">${TV_ICON}</div>
-        <p class="empty-title">Ninguém ao vivo agora</p>
-        <p class="empty-sub">Quando alguém que você segue abrir a live, aparece aqui pra você apoiar.</p>
+        <p class="empty-title">${escapeHtml(t(lang, 'empty_title'))}</p>
+        <p class="empty-sub">${escapeHtml(t(lang, 'empty_sub'))}</p>
       </div>`),
     );
     return;
@@ -127,7 +134,7 @@ function render(state) {
 
   app.appendChild(
     el(`<div class="section-head">
-      <span class="label"><span class="live-dot"></span>ao vivo agora</span>
+      <span class="label"><span class="live-dot"></span>${escapeHtml(t(lang, 'live_now'))}</span>
       <span class="count">${live.length}</span>
     </div>`),
   );

@@ -1,7 +1,7 @@
 // Service worker: orquestra autenticação, busca de follows ao vivo e a rotação
 // das abas. Concentra todo o efeito colateral de chrome.* aqui.
 
-import { CLIENT_ID, TAB_GROUP_TITLE } from './config.js';
+import { CLIENT_ID, TAB_GROUP_TITLE, SLOTS } from './config.js';
 import { launchTwitchAuth } from './auth.js';
 import { getCurrentUser, getFollowedLiveStreams } from './twitchApi.js';
 import { windowAt, nextCursor } from './rotation.js';
@@ -87,6 +87,15 @@ async function updateWindow(logins, settings) {
   }
 }
 
+// Só agenda a troca se há mais canais do que abas E o tempo não é ∞ (0).
+function scheduleRotation(selectedCount, settings) {
+  if (selectedCount > SLOTS && settings.intervalMinutes > 0) {
+    chrome.alarms.create(ALARM, { periodInMinutes: settings.intervalMinutes });
+  } else {
+    chrome.alarms.clear(ALARM);
+  }
+}
+
 async function start() {
   const settings = await store.getSettings();
   const rotation = await store.getRotation();
@@ -94,18 +103,17 @@ async function start() {
   if (!selected.length) {
     throw new Error('Nenhum canal selecionado está ao vivo agora.');
   }
-  await openWindow(windowAt(selected, 0, settings.slots), settings);
+  await openWindow(windowAt(selected, 0, SLOTS), settings);
   await store.setRotation({ ...rotation, cursor: 0, status: 'playing' });
-  if (selected.length > settings.slots) {
-    chrome.alarms.create(ALARM, { periodInMinutes: settings.intervalMinutes });
-  }
+  scheduleRotation(selected.length, settings);
 }
 
 async function resume() {
   const settings = await store.getSettings();
   const rotation = await store.getRotation();
+  const selected = await liveSelected();
   await store.setRotation({ ...rotation, status: 'playing' });
-  chrome.alarms.create(ALARM, { periodInMinutes: settings.intervalMinutes });
+  scheduleRotation(selected.length, settings);
 }
 
 async function play() {
@@ -133,10 +141,11 @@ async function rotate() {
   const rotation = await store.getRotation();
   if (rotation.status !== 'playing') return;
   const settings = await store.getSettings();
+  if (settings.intervalMinutes <= 0) return; // ∞: não troca
   const selected = await liveSelected();
-  if (selected.length <= settings.slots) return; // nada a rotacionar
-  const cursor = nextCursor(rotation.cursor, settings.slots, selected.length);
-  await updateWindow(windowAt(selected, cursor, settings.slots), settings);
+  if (selected.length <= SLOTS) return; // nada a rotacionar
+  const cursor = nextCursor(rotation.cursor, SLOTS, selected.length);
+  await updateWindow(windowAt(selected, cursor, SLOTS), settings);
   await store.setRotation({ ...rotation, cursor });
 }
 
@@ -154,7 +163,8 @@ async function applySettings(partial) {
   await store.setSettings(settings);
   const rotation = await store.getRotation();
   if (rotation.status === 'playing') {
-    chrome.alarms.create(ALARM, { periodInMinutes: settings.intervalMinutes });
+    const selected = await liveSelected();
+    scheduleRotation(selected.length, settings);
   }
 }
 

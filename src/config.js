@@ -11,12 +11,19 @@ export const CLIENT_ID = '4zyirev8jnklp5qy6wje4wo2mijjxn';
 export const SCOPES = ['user:read:follows'];
 export const HELIX_BASE = 'https://api.twitch.tv/helix';
 export const TWITCH_AUTH_BASE = 'https://id.twitch.tv/oauth2/authorize';
-export const TAB_GROUP_TITLE = 'Rotacionando';
+export const TAB_GROUP_TITLE = 'Support My Streamers';
+
+// Número fixo de abas simultâneas. Não é configurável: sempre 2 (ou 1 quando só
+// há 1 canal marcado, porque a janela usa min(SLOTS, nº de canais)).
+export const SLOTS = 2;
+
+// Opções de tempo de rotação (minutos). 0 = não trocar (∞).
+export const ROTATION_STEPS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 0];
 
 export const DEFAULT_SETTINGS = {
   intervalMinutes: 10,
-  slots: 2,
   audio: 'muted', // 'muted' | 'on'
+  lang: 'pt', // 'pt' | 'en'
 };
 
 export const DEFAULT_ROTATION = {

@@ -1,36 +1,69 @@
 import { getSettings } from '../storage.js';
+import { ROTATION_STEPS } from '../config.js';
+import { t, formatInterval } from '../i18n.js';
 
 const $ = (id) => document.getElementById(id);
+let savedTimer = null;
 
-function clampInt(value, min, max, fallback) {
-  const n = parseInt(value, 10);
-  if (Number.isNaN(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
+function intervalToIndex(minutes) {
+  const i = ROTATION_STEPS.indexOf(minutes);
+  return i === -1 ? ROTATION_STEPS.indexOf(10) : i;
+}
+
+function applyI18n(lang) {
+  $('t-tagline').textContent = t(lang, 'opt_tagline');
+  $('t-about-title').textContent = t(lang, 'about_title');
+  $('t-about-text').textContent = t(lang, 'about_text');
+  $('t-lang-label').textContent = t(lang, 'lang_label');
+  $('t-lang-hint').textContent = t(lang, 'lang_hint');
+  $('t-time-label').textContent = t(lang, 'time_label');
+  $('t-time-hint').textContent = t(lang, 'time_hint');
+  $('t-audio-label').textContent = t(lang, 'audio_label');
+  $('t-audio-hint').textContent = t(lang, 'audio_hint');
+  $('t-audio-muted').textContent = t(lang, 'audio_muted');
+  $('t-audio-on').textContent = t(lang, 'audio_on');
+  updateTimeLabel(lang);
+}
+
+function updateTimeLabel(lang) {
+  $('time-val').textContent = formatInterval(lang, ROTATION_STEPS[Number($('interval').value)]);
+}
+
+function flashSaved(lang) {
+  $('saved').textContent = t(lang, 'saved');
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    $('saved').textContent = '';
+  }, 1500);
+}
+
+async function persist(partial, lang) {
+  await chrome.runtime.sendMessage({ type: 'SET_SETTINGS', settings: partial });
+  flashSaved(lang);
 }
 
 async function load() {
   const s = await getSettings();
-  $('interval').value = s.intervalMinutes;
-  $('slots').value = s.slots;
+  $('lang').value = s.lang;
   $('audio').value = s.audio;
+  $('interval').value = String(intervalToIndex(s.intervalMinutes));
+  applyI18n(s.lang);
 }
 
-$('save').addEventListener('click', async () => {
-  const settings = {
-    intervalMinutes: clampInt($('interval').value, 1, 120, 10),
-    slots: clampInt($('slots').value, 1, 4, 2),
-    audio: $('audio').value === 'on' ? 'on' : 'muted',
-  };
-  await chrome.runtime.sendMessage({ type: 'SET_SETTINGS', settings });
+$('lang').addEventListener('change', () => {
+  const lang = $('lang').value;
+  applyI18n(lang);
+  persist({ lang }, lang);
+});
 
-  // Reflete os valores normalizados de volta na tela.
-  $('interval').value = settings.intervalMinutes;
-  $('slots').value = settings.slots;
+$('interval').addEventListener('input', () => updateTimeLabel($('lang').value));
+$('interval').addEventListener('change', () => {
+  const lang = $('lang').value;
+  persist({ intervalMinutes: ROTATION_STEPS[Number($('interval').value)] }, lang);
+});
 
-  $('saved').textContent = 'Salvo!';
-  setTimeout(() => {
-    $('saved').textContent = '';
-  }, 1500);
+$('audio').addEventListener('change', () => {
+  persist({ audio: $('audio').value }, $('lang').value);
 });
 
 load();

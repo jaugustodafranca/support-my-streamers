@@ -10,49 +10,54 @@
     <main>
       <header class="page-head">
         <h1 class="wordmark">support<em>my</em>streamers</h1>
-        <p class="tagline">configurações de rotação</p>
+        <p class="tagline" id="t-tagline"></p>
       </header>
+
+      <section class="panel about">
+        <h2 id="t-about-title"></h2>
+        <p class="about-text" id="t-about-text"></p>
+      </section>
 
       <section class="panel">
         <div class="field">
           <div class="field-text">
-            <label for="interval">Tempo de rotação</label>
-            <p class="field-hint">De quanto em quanto tempo a extensão troca os streamers que ficam abertos.</p>
+            <label for="lang" id="t-lang-label"></label>
+            <p class="field-hint" id="t-lang-hint"></p>
           </div>
           <div class="field-control">
-            <input id="interval" type="number" min="1" max="120" inputmode="numeric" />
-            <span class="unit">min</span>
+            <select id="lang">
+              <option value="pt">Português</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </div>
 
         <div class="field">
           <div class="field-text">
-            <label for="slots">Abas simultâneas</label>
-            <p class="field-hint">Quantos streamers ficam abertos ao mesmo tempo em cada ciclo.</p>
+            <label for="interval" id="t-time-label"></label>
+            <p class="field-hint" id="t-time-hint"></p>
           </div>
-          <div class="field-control">
-            <input id="slots" type="number" min="1" max="4" inputmode="numeric" />
+          <div class="field-control time-control">
+            <input id="interval" type="range" min="0" max="9" step="1" />
+            <span class="time-val" id="time-val"></span>
           </div>
         </div>
 
         <div class="field">
           <div class="field-text">
-            <label for="audio">Áudio</label>
-            <p class="field-hint">"Mudo" silencia o player de verdade. Não há truque pra contornar a contagem da Twitch.</p>
+            <label for="audio" id="t-audio-label"></label>
+            <p class="field-hint" id="t-audio-hint"></p>
           </div>
           <div class="field-control">
             <select id="audio">
-              <option value="muted">Mudo</option>
-              <option value="on">Com som</option>
+              <option value="muted" id="t-audio-muted"></option>
+              <option value="on" id="t-audio-on"></option>
             </select>
           </div>
         </div>
       </section>
 
-      <div class="actions">
-        <button id="save" class="play-btn">Salvar</button>
-        <span id="saved" class="saved"></span>
-      </div>
+      <p class="saved" id="saved"></p>
     </main>
     <script type="module" src="options.js"></script>
   </body>

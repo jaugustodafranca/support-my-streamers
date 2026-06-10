@@ -29,8 +29,8 @@ describe('settings', () => {
   it('retorna defaults quando vazio', async () => {
     expect(await getSettings(fakeArea())).toEqual({
       intervalMinutes: 10,
-      slots: 2,
       audio: 'muted',
+      lang: 'pt',
     });
   });
 
@@ -39,7 +39,8 @@ describe('settings', () => {
     await setSettings({ intervalMinutes: 5 }, area);
     const s = await getSettings(area);
     expect(s.intervalMinutes).toBe(5);
-    expect(s.slots).toBe(2);
+    expect(s.audio).toBe('muted');
+    expect(s.lang).toBe('pt');
   });
 });
 
