@@ -41,4 +41,4 @@ chamadas diretas e autenticadas à API da Twitch que você autorizou.
 
 ## Contato
 
-Dúvidas sobre privacidade: j.augustodafranca@gmail.com
+Dúvidas sobre privacidade: contato@zaintech.com.br
