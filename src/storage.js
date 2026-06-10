@@ -4,15 +4,6 @@ import { DEFAULT_SETTINGS, DEFAULT_ROTATION } from './config.js';
 
 const area = () => chrome.storage.local;
 
-export async function getClientId(store = area()) {
-  const { clientId } = await store.get('clientId');
-  return clientId || '';
-}
-
-export async function setClientId(clientId, store = area()) {
-  await store.set({ clientId });
-}
-
 export async function getAuth(store = area()) {
   const { auth } = await store.get('auth');
   return auth ?? null;

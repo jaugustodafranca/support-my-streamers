@@ -1,4 +1,4 @@
-import { getSettings, getClientId, setClientId } from '../storage.js';
+import { getSettings } from '../storage.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -9,8 +9,6 @@ function clampInt(value, min, max, fallback) {
 }
 
 async function load() {
-  $('redirectUri').textContent = chrome.identity.getRedirectURL();
-  $('clientId').value = await getClientId();
   const s = await getSettings();
   $('interval').value = s.intervalMinutes;
   $('slots').value = s.slots;
@@ -18,8 +16,6 @@ async function load() {
 }
 
 $('save').addEventListener('click', async () => {
-  await setClientId($('clientId').value.trim());
-
   const settings = {
     intervalMinutes: clampInt($('interval').value, 1, 120, 10),
     slots: clampInt($('slots').value, 1, 4, 2),

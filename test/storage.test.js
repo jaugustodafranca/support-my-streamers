@@ -4,8 +4,6 @@ import {
   setSettings,
   getRotation,
   setRotation,
-  getClientId,
-  setClientId,
   getAuth,
   setAuth,
   clearAuth,
@@ -54,18 +52,6 @@ describe('rotation', () => {
     const area = fakeArea();
     await setRotation({ channels: ['a', 'b'], cursor: 0, status: 'playing' }, area);
     expect((await getRotation(area)).channels).toEqual(['a', 'b']);
-  });
-});
-
-describe('clientId', () => {
-  it('vazio por padrão', async () => {
-    expect(await getClientId(fakeArea())).toBe('');
-  });
-
-  it('salva e lê', async () => {
-    const area = fakeArea();
-    await setClientId('cid', area);
-    expect(await getClientId(area)).toBe('cid');
   });
 });
 

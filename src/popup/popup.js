@@ -59,11 +59,11 @@ function render(state) {
   }
 
   if (!state.clientIdSet) {
+    // Estado só visível ao desenvolvedor: CLIENT_ID não foi preenchido em config.js.
     app.appendChild(
       el(`<div class="pad">
         <h1>Support My Streamers</h1>
-        <p class="muted">Antes de começar, configure o <b>Client-ID</b> da sua aplicação Twitch.</p>
-        <button data-action="options" class="primary">Abrir Opções</button>
+        <p class="muted">Extensão sem Client-ID configurado. Defina <b>CLIENT_ID</b> em <code>src/config.js</code>.</p>
       </div>`),
     );
     return;

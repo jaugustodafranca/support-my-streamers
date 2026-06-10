@@ -24,35 +24,41 @@ src/
 test/                  Testes (Vitest) da lógica pura
 ```
 
-## Setup (uma vez)
+## Setup do desenvolvedor (uma vez, só você)
 
-### 1. Criar a aplicação na Twitch
+O usuário final NÃO faz nada disso — ele só clica em "Conectar com a Twitch".
+Estes passos são pra você, dono do projeto, deixar a extensão pronta.
 
-1. Acesse <https://dev.twitch.tv/console/apps> e clique em **Register Your Application**.
-2. **Name**: qualquer nome (ex.: "Support My Streamers").
-3. **OAuth Redirect URLs**: deixe em branco por enquanto — você vai voltar aqui no passo 3.
-4. **Category**: Application Integration.
+### 1. Criar UM app na Twitch (o app do projeto)
+
+1. Acesse <https://dev.twitch.tv/console/apps> → **Register Your Application**.
+2. **Name**: "Support My Streamers".
+3. **Category**: Application Integration.
+4. **OAuth Redirect URLs**: você preenche no passo 3.
 5. Salve e copie o **Client ID**.
 
-### 2. Carregar a extensão no Chrome
+### 2. Embutir o Client-ID
 
-1. Abra `chrome://extensions`.
-2. Ative o **Modo do desenvolvedor** (canto superior direito).
-3. Clique em **Carregar sem compactação** e selecione a pasta deste projeto.
-4. A extensão aparece na lista. **Não mova a pasta depois** — o ID da extensão
-   (e o Redirect URL) dependem do caminho.
+Cole o Client-ID copiado em `src/config.js`:
 
-### 3. Configurar e ligar o Redirect URL
+```js
+export const CLIENT_ID = 'seu_client_id_aqui';
+```
 
-1. Clique no ícone da extensão → **Abrir Opções** (ou botão direito → Opções).
-2. Cole o **Client-ID** copiado no passo 1.
-3. Copie o **OAuth Redirect URL** mostrado na tela
-   (algo como `https://<id>.chromiumapp.org/`).
-4. Volte ao app na Twitch (passo 1), edite e cole esse URL em
+Client-ID é público por natureza — pode ir versionado/commitado sem risco.
+
+### 3. Carregar a extensão e registrar o Redirect URL
+
+1. `chrome://extensions` → ative o **Modo do desenvolvedor** → **Carregar sem
+   compactação** → selecione a pasta do projeto. **Não mova a pasta depois.**
+2. Anote o **ID da extensão** mostrado no card. O Redirect URL é
+   `https://<id-da-extensão>.chromiumapp.org/`.
+3. Volte ao app na Twitch (passo 1), edite e adicione esse URL em
    **OAuth Redirect URLs**. Salve.
-5. Nas Opções, clique em **Salvar**.
+   - A Twitch aceita vários redirect URLs — ao publicar, adicione também o da
+     versão publicada (o ID muda na loja).
 
-### 4. Usar
+### 4. Testar (como usuário final faria)
 
 1. Clique no ícone → **Conectar com a Twitch** e autorize.
 2. Marque os canais ao vivo que quer rotacionar.

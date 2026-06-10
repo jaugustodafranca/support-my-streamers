@@ -1,7 +1,7 @@
 // Service worker: orquestra autenticação, busca de follows ao vivo e a rotação
 // das abas. Concentra todo o efeito colateral de chrome.* aqui.
 
-import { TAB_GROUP_TITLE } from './config.js';
+import { CLIENT_ID, TAB_GROUP_TITLE } from './config.js';
 import { launchTwitchAuth } from './auth.js';
 import { getCurrentUser, getFollowedLiveStreams } from './twitchApi.js';
 import { windowAt, nextCursor } from './rotation.js';
@@ -32,10 +32,9 @@ async function ensureUserId(auth, clientId) {
 
 async function fetchLiveFollows() {
   const auth = await store.getAuth();
-  const clientId = await store.getClientId();
-  if (!auth || !clientId) return [];
-  const withId = await ensureUserId(auth, clientId);
-  return getFollowedLiveStreams(fetch, clientId, withId.accessToken, withId.userId);
+  if (!auth || !CLIENT_ID) return [];
+  const withId = await ensureUserId(auth, CLIENT_ID);
+  return getFollowedLiveStreams(fetch, CLIENT_ID, withId.accessToken, withId.userId);
 }
 
 async function liveSelected() {
@@ -163,10 +162,9 @@ async function getState() {
   const auth = await store.getAuth();
   const settings = await store.getSettings();
   const rotation = await store.getRotation();
-  const clientId = await store.getClientId();
-  const base = { clientIdSet: !!clientId, settings, rotation };
+  const base = { clientIdSet: !!CLIENT_ID, settings, rotation };
 
-  if (!auth || !clientId) {
+  if (!auth || !CLIENT_ID) {
     return { ...base, authed: false, user: null, live: [] };
   }
 
@@ -212,11 +210,10 @@ async function handle(msg) {
       return getState();
     case 'LOGIN':
       return withState(async () => {
-        const clientId = await store.getClientId();
-        if (!clientId) throw new Error('Configure o Client-ID nas Opções antes de conectar.');
-        const parsed = await launchTwitchAuth(clientId);
+        if (!CLIENT_ID) throw new Error('Client-ID não configurado na extensão.');
+        const parsed = await launchTwitchAuth(CLIENT_ID);
         await store.setAuth(parsed);
-        await ensureUserId(await store.getAuth(), clientId);
+        await ensureUserId(await store.getAuth(), CLIENT_ID);
       });
     case 'LOGOUT':
       return withState(async () => {
