@@ -5,8 +5,8 @@
 // é público por natureza. O usuário final NÃO precisa criar nada: só clica em
 // "Conectar com a Twitch" e autoriza.
 //
-// >>> COLE AQUI o Client-ID do app do projeto: <<<
-export const CLIENT_ID = '';
+// Client-ID do app "support-my-streamers" registrado em dev.twitch.tv.
+export const CLIENT_ID = '4zyirev8jnklp5qy6wje4wo2mijjxn';
 
 export const SCOPES = ['user:read:follows'];
 export const HELIX_BASE = 'https://api.twitch.tv/helix';
