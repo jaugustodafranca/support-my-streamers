@@ -3,33 +3,54 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="../theme.css" />
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
     <main>
-      <h1>Support My Streamers — Opções</h1>
+      <header class="page-head">
+        <h1 class="wordmark">support<em>my</em>streamers</h1>
+        <p class="tagline">configurações de rotação</p>
+      </header>
 
-      <section>
-        <h2>Rotação</h2>
-        <label>
-          Tempo de rotação (minutos)
-          <input id="interval" type="number" min="1" max="120" />
-        </label>
-        <label>
-          Número de abas simultâneas
-          <input id="slots" type="number" min="1" max="4" />
-        </label>
-        <label>
-          Áudio
-          <select id="audio">
-            <option value="muted">Mudo</option>
-            <option value="on">Com som</option>
-          </select>
-        </label>
+      <section class="panel">
+        <div class="field">
+          <div class="field-text">
+            <label for="interval">Tempo de rotação</label>
+            <p class="field-hint">De quanto em quanto tempo a extensão troca os streamers que ficam abertos.</p>
+          </div>
+          <div class="field-control">
+            <input id="interval" type="number" min="1" max="120" inputmode="numeric" />
+            <span class="unit">min</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label for="slots">Abas simultâneas</label>
+            <p class="field-hint">Quantos streamers ficam abertos ao mesmo tempo em cada ciclo.</p>
+          </div>
+          <div class="field-control">
+            <input id="slots" type="number" min="1" max="4" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label for="audio">Áudio</label>
+            <p class="field-hint">"Mudo" silencia o player de verdade. Não há truque pra contornar a contagem da Twitch.</p>
+          </div>
+          <div class="field-control">
+            <select id="audio">
+              <option value="muted">Mudo</option>
+              <option value="on">Com som</option>
+            </select>
+          </div>
+        </div>
       </section>
 
       <div class="actions">
-        <button id="save" class="primary">Salvar</button>
+        <button id="save" class="play-btn">Salvar</button>
         <span id="saved" class="saved"></span>
       </div>
     </main>

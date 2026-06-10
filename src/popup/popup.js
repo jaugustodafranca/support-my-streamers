@@ -1,6 +1,10 @@
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
 let toastTimer = null;
+let listRevealed = false;
+
+const GEAR_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+const TV_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg>`;
 
 function send(msg) {
   return chrome.runtime.sendMessage(msg);
@@ -41,12 +45,19 @@ function statusText(state) {
   const { rotation, settings, live } = state;
   const selectedLive = rotation.channels.filter((c) => live.some((s) => s.login === c)).length;
   if (rotation.status === 'playing') {
-    return `Rotacionando ${Math.min(settings.slots, selectedLive)} de ${selectedLive} ao vivo · troca a cada ${settings.intervalMinutes} min`;
+    return `rotacionando ${Math.min(settings.slots, selectedLive)} de ${selectedLive} · troca a cada ${settings.intervalMinutes} min`;
   }
   if (rotation.status === 'paused') {
-    return `Pausado · ${rotation.channels.length} canais na lista`;
+    return `pausado · ${rotation.channels.length} na lista`;
   }
-  return `${rotation.channels.length} canais selecionados`;
+  return `${rotation.channels.length} selecionado${rotation.channels.length === 1 ? '' : 's'}`;
+}
+
+function topbar() {
+  return `<header class="topbar">
+    <h1 class="wordmark">support<em>my</em>streamers</h1>
+    <button class="icon-btn" data-action="options" aria-label="Opções">${GEAR_ICON}</button>
+  </header>`;
 }
 
 function render(state) {
@@ -54,16 +65,15 @@ function render(state) {
 
   if (!state || (!('clientIdSet' in state) && !('authed' in state))) {
     if (state?.error) showToast(state.error);
-    app.appendChild(el('<p class="muted pad">Algo deu errado. Tente reabrir o popup.</p>'));
+    app.appendChild(el('<div class="dev-note"><p>Algo deu errado. Tente reabrir o popup.</p></div>'));
     return;
   }
 
   if (!state.clientIdSet) {
-    // Estado só visível ao desenvolvedor: CLIENT_ID não foi preenchido em config.js.
     app.appendChild(
-      el(`<div class="pad">
-        <h1>Support My Streamers</h1>
-        <p class="muted">Extensão sem Client-ID configurado. Defina <b>CLIENT_ID</b> em <code>src/config.js</code>.</p>
+      el(`<div class="dev-note">
+        <h1 class="wordmark" style="font-size:22px">support<em>my</em>streamers</h1>
+        <p style="color:var(--text-faint);font-size:13px;line-height:1.5">Sem Client-ID configurado. Defina <code>CLIENT_ID</code> em <code>src/config.js</code>.</p>
       </div>`),
     );
     return;
@@ -71,10 +81,10 @@ function render(state) {
 
   if (!state.authed) {
     app.appendChild(
-      el(`<div class="pad">
-        <h1>Support My Streamers</h1>
-        <p class="muted">Conecte sua conta da Twitch para ver quem você segue está ao vivo.</p>
-        <button data-action="login" class="primary">Conectar com a Twitch</button>
+      el(`<div class="hero">
+        <h1 class="wordmark big">support<em>my</em>streamers</h1>
+        <p class="hero-sub">Apoie quem você acompanha deixando a live rolando enquanto faz outras coisas.</p>
+        <button class="play-btn wide" data-action="login">Conectar com a Twitch</button>
       </div>`),
     );
     return;
@@ -82,49 +92,64 @@ function render(state) {
 
   const { rotation, user, live } = state;
   const selected = new Set(rotation.channels);
+  const playing = rotation.status === 'playing';
 
+  app.appendChild(el(topbar()));
   app.appendChild(
-    el(`<div class="header">
-      <span>Olá, <b>${escapeHtml(user.displayName || user.login)}</b></span>
-      <button data-action="logout" class="link">sair</button>
-    </div>`),
+    el(`<p class="greeting">olá, <strong>${escapeHtml(user.displayName || user.login)}</strong> · <button class="textlink" data-action="logout">sair</button></p>`),
   );
 
-  const playLabel =
-    rotation.status === 'paused' ? 'Retomar' : 'Iniciar';
+  const playLabel = rotation.status === 'paused' ? 'Retomar' : 'Iniciar';
   app.appendChild(
-    el(`<div class="controls">
+    el(`<div class="dock">
       ${
-        rotation.status === 'playing'
-          ? '<button data-action="pause" class="primary">⏸ Pausar</button>'
-          : `<button data-action="play" class="primary">▶ ${playLabel}</button>`
+        playing
+          ? '<button class="play-btn playing" data-action="pause">⏸ Pausar</button>'
+          : `<button class="play-btn" data-action="play">▶ ${playLabel}</button>`
       }
-      <button data-action="stop" ${rotation.status === 'stopped' ? 'disabled' : ''}>⏹ Parar</button>
-      <button data-action="options" class="link">opções</button>
+      <button class="ghost-btn" data-action="stop" ${rotation.status === 'stopped' ? 'disabled' : ''}>Parar</button>
+      <div class="ticker">${playing ? '<span class="pulse"></span>' : ''}${escapeHtml(statusText(state))}</div>
     </div>`),
   );
 
-  app.appendChild(el(`<p class="status">${escapeHtml(statusText(state))}</p>`));
-  if (state.error) app.appendChild(el(`<p class="error">${escapeHtml(state.error)}</p>`));
+  if (state.error) app.appendChild(el(`<p class="error-line">${escapeHtml(state.error)}</p>`));
 
   if (!live.length) {
-    app.appendChild(el('<p class="muted pad">Nenhum dos seus follows está ao vivo agora.</p>'));
+    app.appendChild(
+      el(`<div class="empty">
+        <div class="empty-glyph">${TV_ICON}</div>
+        <p class="empty-title">Ninguém ao vivo agora</p>
+        <p class="empty-sub">Quando alguém que você segue abrir a live, aparece aqui pra você apoiar.</p>
+      </div>`),
+    );
     return;
   }
 
-  const list = el('<ul class="channels"></ul>');
-  for (const s of live) {
+  app.appendChild(
+    el(`<div class="section-head">
+      <span class="label"><span class="live-dot"></span>ao vivo agora</span>
+      <span class="count">${live.length}</span>
+    </div>`),
+  );
+
+  const list = el(`<ul class="channels${listRevealed ? '' : ' reveal'}"></ul>`);
+  live.forEach((s, i) => {
     list.appendChild(
-      el(`<li>
-        <label>
-          <input type="checkbox" data-toggle="${escapeHtml(s.login)}" ${selected.has(s.login) ? 'checked' : ''} />
-          <span class="name">${escapeHtml(s.displayName || s.login)}</span>
-          <span class="meta">${escapeHtml(s.game || 'Ao vivo')} · ${formatViewers(s.viewers)} 👀</span>
+      el(`<li class="ch" style="--i:${i}">
+        <label class="ch-row">
+          <input type="checkbox" class="vh" data-toggle="${escapeHtml(s.login)}" ${selected.has(s.login) ? 'checked' : ''} />
+          <span class="switch"></span>
+          <span class="ch-info">
+            <span class="ch-name">${escapeHtml(s.displayName || s.login)}</span>
+            <span class="ch-meta">${escapeHtml(s.game || 'Ao vivo')}</span>
+          </span>
+          <span class="ch-viewers">${formatViewers(s.viewers)}</span>
         </label>
       </li>`),
     );
-  }
+  });
   app.appendChild(list);
+  listRevealed = true;
 }
 
 const ACTION_TO_MSG = {
