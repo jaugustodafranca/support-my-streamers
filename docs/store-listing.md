@@ -66,5 +66,7 @@ Entertainment (ou Social & Communication)
   código remoto; todo o código está no pacote.
 
 ## URL da política de privacidade
-Hospede o arquivo `PRIVACY.md` (ex.: GitHub Pages do repositório) e use a URL
-pública aqui. Alternativa rápida: link direto do arquivo no GitHub.
+https://zaintech.com.br/support-my-streamers/privacy
+
+(Hospedada no site da Zaintech, em `personal/zaintech` → rota
+`src/app/support-my-streamers/privacy`. Contato: contato@zaintech.com.br.)
