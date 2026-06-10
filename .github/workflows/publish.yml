@@ -1,0 +1,32 @@
+name: Publicar na Chrome Web Store
+
+# Dispara a cada push na main que mexa nos arquivos da extensão.
+# Lembre de subir a "version" no manifest.json a cada release — a loja
+# rejeita upload com versão repetida.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "manifest.json"
+      - "src/**"
+      - "icons/**"
+      - ".github/workflows/publish.yml"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Empacotar extensão
+        run: zip -r extension.zip manifest.json src icons -x "*.DS_Store"
+
+      - name: Upload + publicar (Chrome Web Store)
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: extension.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
