@@ -165,12 +165,6 @@ Personal lurking for channels you already follow — not viewbotting. No analyti
 
 [MIT](LICENSE)
 
-## Store assets
-
-<p align="center">
-  <img src="assets/store/promo-small-440x280.png" alt="Support My Streamers promo tile" width="320" />
-</p>
-
 <p align="center">
   <sub>powered by <a href="https://zaintech.com.br">zaintech.com.br</a></sub>
 </p>
