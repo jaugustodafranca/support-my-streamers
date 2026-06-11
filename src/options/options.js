@@ -38,7 +38,15 @@ function flashSaved(lang) {
 }
 
 async function persist(partial, lang) {
-  await chrome.runtime.sendMessage({ type: 'SET_SETTINGS', settings: partial });
+  const state = await chrome.runtime.sendMessage({ type: 'SET_SETTINGS', settings: partial });
+  if (state?.error) {
+    $('saved').textContent = t(lang, 'save_error');
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => {
+      $('saved').textContent = '';
+    }, 3000);
+    return;
+  }
   flashSaved(lang);
 }
 

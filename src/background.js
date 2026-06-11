@@ -1,19 +1,98 @@
 // Service worker: orquestra autenticação, busca de follows ao vivo e a rotação
 // das abas. Concentra todo o efeito colateral de chrome.* aqui.
 
-import { CLIENT_ID, TAB_GROUP_TITLE, SLOTS } from './config.js';
-import { launchTwitchAuth } from './auth.js';
+import { CLIENT_ID, TAB_GROUP_TITLE, SLOTS, HEALTH_CHECK_MINUTES } from './config.js';
+import { launchTwitchAuth, isAuthExpired } from './auth.js';
 import { getCurrentUser, getFollowedLiveStreams } from './twitchApi.js';
-import { windowAt, nextCursor } from './rotation.js';
+import {
+  windowAt,
+  nextCursor,
+  parseChannelLogin,
+  decideTabAction,
+  unshownLive,
+  needsRotation,
+} from './rotation.js';
 import * as store from './storage.js';
 
-const ALARM = 'rotate';
+// Timer interno do Chrome — roda em silêncio, sem notificar o usuário.
+const CYCLE_TIMER = 'cycle';
 
-// Estado em memória das abas da rotação (recuperável; some se o SW reiniciar).
-let runtime = { tabIds: [], groupId: null };
+const RUNTIME_KEY = 'smsRuntime';
+
+// Estado das abas — espelhado em chrome.storage.session para sobreviver ao SW.
+let runtime = { tabIds: [], tabLogins: [], groupId: null };
+
+async function persistRuntime() {
+  await chrome.storage.session.set({ [RUNTIME_KEY]: runtime });
+}
+
+async function restoreRuntime() {
+  const stored = await chrome.storage.session.get(RUNTIME_KEY);
+  const saved = stored[RUNTIME_KEY];
+  if (!saved?.tabIds?.length) return;
+
+  const tabIds = [];
+  const tabLogins = [];
+  for (let i = 0; i < saved.tabIds.length; i++) {
+    try {
+      await chrome.tabs.get(saved.tabIds[i]);
+      tabIds.push(saved.tabIds[i]);
+      tabLogins.push(saved.tabLogins[i] ?? null);
+    } catch {
+      // aba fechada pelo usuário
+    }
+  }
+
+  runtime = {
+    tabIds,
+    tabLogins,
+    groupId: tabIds.length ? saved.groupId : null,
+  };
+}
+
+async function syncOpenTabs(live, settings) {
+  await reconcileTabs(live, settings);
+  await fillEmptySlots(live, settings);
+  await persistRuntime();
+}
 
 function watchUrl(login) {
   return `https://www.twitch.tv/${login}`;
+}
+
+function tabMuted(settings) {
+  return settings.audio === 'muted';
+}
+
+async function injectPlayerScript(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['src/twitchPlayer.js'],
+    });
+  } catch {
+    // página ainda carregando ou aba fechada
+  }
+}
+
+async function applyTabAudio(tabId, settings) {
+  await chrome.tabs.update(tabId, { muted: tabMuted(settings) });
+  await injectPlayerScript(tabId);
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'ENSURE_PLAYER' });
+  } catch {
+    // content script ainda não injetado
+  }
+}
+
+async function applyAudioToAllTabs(settings) {
+  for (const tabId of runtime.tabIds) {
+    try {
+      await applyTabAudio(tabId, settings);
+    } catch {
+      // aba fechada pelo usuário
+    }
+  }
 }
 
 async function ensureUserId(auth, clientId) {
@@ -33,6 +112,10 @@ async function ensureUserId(auth, clientId) {
 async function fetchLiveFollows() {
   const auth = await store.getAuth();
   if (!auth || !CLIENT_ID) return [];
+  if (isAuthExpired(auth)) {
+    await store.clearAuth();
+    return [];
+  }
   const withId = await ensureUserId(auth, CLIENT_ID);
   return getFollowedLiveStreams(fetch, CLIENT_ID, withId.accessToken, withId.userId);
 }
@@ -52,16 +135,16 @@ async function closeTabs() {
       // aba já fechada pelo usuário — segue o jogo
     }
   }
-  runtime = { tabIds: [], groupId: null };
+  runtime = { tabIds: [], tabLogins: [], groupId: null };
+  await persistRuntime();
 }
 
 async function openWindow(logins, settings) {
   await closeTabs();
-  const muted = settings.audio === 'muted';
   const tabIds = [];
   for (const login of logins) {
     const tab = await chrome.tabs.create({ url: watchUrl(login), active: false });
-    if (muted) await chrome.tabs.update(tab.id, { muted: true });
+    await applyTabAudio(tab.id, settings);
     tabIds.push(tab.id);
   }
   let groupId = null;
@@ -69,31 +152,119 @@ async function openWindow(logins, settings) {
     groupId = await chrome.tabs.group({ tabIds });
     await chrome.tabGroups.update(groupId, { title: TAB_GROUP_TITLE, color: 'purple' });
   }
-  runtime = { tabIds, groupId };
+  runtime = { tabIds, tabLogins: [...logins], groupId };
+  await persistRuntime();
 }
 
-async function updateWindow(logins, settings) {
+async function assignWindow(logins, settings) {
   if (runtime.tabIds.length !== logins.length) {
     return openWindow(logins, settings);
   }
-  const muted = settings.audio === 'muted';
   for (let i = 0; i < logins.length; i++) {
     try {
-      await chrome.tabs.update(runtime.tabIds[i], { url: watchUrl(logins[i]), muted });
+      await chrome.tabs.update(runtime.tabIds[i], {
+        url: watchUrl(logins[i]),
+        muted: tabMuted(settings),
+      });
     } catch {
-      // alguma aba foi fechada — recria a janela inteira
       return openWindow(logins, settings);
     }
   }
+  runtime.tabLogins = [...logins];
+  await persistRuntime();
 }
 
-// Só agenda a troca se há mais canais do que abas E o tempo não é ∞ (0).
-function scheduleRotation(selectedCount, settings) {
-  if (selectedCount > SLOTS && settings.intervalMinutes > 0) {
-    chrome.alarms.create(ALARM, { periodInMinutes: settings.intervalMinutes });
-  } else {
-    chrome.alarms.clear(ALARM);
+async function reconcileTabs(live, settings) {
+  const newTabIds = [];
+  const newTabLogins = [];
+  const taken = [];
+
+  for (let i = 0; i < runtime.tabIds.length; i++) {
+    const tabId = runtime.tabIds[i];
+    const supportedLogin = runtime.tabLogins[i];
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch {
+      continue;
+    }
+
+    const currentLogin = parseChannelLogin(tab.url);
+    const decision = decideTabAction({
+      supportedLogin,
+      currentLogin,
+      live,
+      taken,
+    });
+
+    if (decision.action === 'close') {
+      try {
+        await chrome.tabs.remove(tabId);
+      } catch {
+        // já fechada
+      }
+      continue;
+    }
+
+    taken.push(decision.login);
+    newTabIds.push(tabId);
+    newTabLogins.push(decision.login);
+
+    if (decision.action === 'navigate' || currentLogin !== decision.login) {
+      try {
+        await chrome.tabs.update(tabId, {
+          url: watchUrl(decision.login),
+          muted: tabMuted(settings),
+        });
+      } catch {
+        // aba fechada durante o ciclo
+      }
+    }
   }
+
+  runtime.tabIds = newTabIds;
+  runtime.tabLogins = newTabLogins;
+  if (!runtime.tabIds.length) runtime.groupId = null;
+  await persistRuntime();
+}
+
+async function fillEmptySlots(live, settings) {
+  const toOpen = unshownLive(live, runtime.tabLogins, SLOTS);
+  for (const login of toOpen) {
+    const tab = await chrome.tabs.create({ url: watchUrl(login), active: false });
+    await applyTabAudio(tab.id, settings);
+    runtime.tabIds.push(tab.id);
+    runtime.tabLogins.push(login);
+
+    if (runtime.groupId) {
+      try {
+        await chrome.tabs.group({ tabIds: tab.id, groupId: runtime.groupId });
+      } catch {
+        runtime.groupId = null;
+      }
+    }
+  }
+
+  if (runtime.tabIds.length && !runtime.groupId) {
+    runtime.groupId = await chrome.tabs.group({ tabIds: runtime.tabIds });
+    await chrome.tabGroups.update(runtime.groupId, { title: TAB_GROUP_TITLE, color: 'purple' });
+  }
+  await persistRuntime();
+}
+
+// Futuro: enviar ao backend (VPS) quanto tempo cada canal ficou aberto neste ciclo.
+async function recordCycleEnd(_live, _tabLogins) {}
+
+async function scheduleCycle() {
+  const settings = await store.getSettings();
+  const rotation = await store.getRotation();
+  if (rotation.status !== 'playing') {
+    chrome.alarms.clear(CYCLE_TIMER);
+    return;
+  }
+  const period =
+    settings.intervalMinutes > 0 ? settings.intervalMinutes : HEALTH_CHECK_MINUTES;
+  chrome.alarms.create(CYCLE_TIMER, { periodInMinutes: period });
 }
 
 async function start() {
@@ -105,15 +276,20 @@ async function start() {
   }
   await openWindow(windowAt(selected, 0, SLOTS), settings);
   await store.setRotation({ ...rotation, cursor: 0, status: 'playing' });
-  scheduleRotation(selected.length, settings);
+  await scheduleCycle();
 }
 
 async function resume() {
   const settings = await store.getSettings();
   const rotation = await store.getRotation();
-  const selected = await liveSelected();
+  if (!runtime.tabIds.length) await restoreRuntime();
+  if (runtime.tabIds.length) {
+    const live = await liveSelected();
+    await syncOpenTabs(live, settings);
+  }
+  await applyAudioToAllTabs(settings);
   await store.setRotation({ ...rotation, status: 'playing' });
-  scheduleRotation(selected.length, settings);
+  await scheduleCycle();
 }
 
 async function play() {
@@ -125,28 +301,39 @@ async function play() {
 }
 
 async function pause() {
-  await chrome.alarms.clear(ALARM);
+  await chrome.alarms.clear(CYCLE_TIMER);
   const rotation = await store.getRotation();
   await store.setRotation({ ...rotation, status: 'paused' });
 }
 
 async function stop() {
-  await chrome.alarms.clear(ALARM);
+  await chrome.alarms.clear(CYCLE_TIMER);
   await closeTabs();
   const rotation = await store.getRotation();
   await store.setRotation({ ...rotation, status: 'stopped', cursor: 0 });
 }
 
-async function rotate() {
+async function syncCycle() {
   const rotation = await store.getRotation();
   if (rotation.status !== 'playing') return;
   const settings = await store.getSettings();
-  if (settings.intervalMinutes <= 0) return; // ∞: não troca
-  const selected = await liveSelected();
-  if (selected.length <= SLOTS) return; // nada a rotacionar
-  const cursor = nextCursor(rotation.cursor, SLOTS, selected.length);
-  await updateWindow(windowAt(selected, cursor, SLOTS), settings);
-  await store.setRotation({ ...rotation, cursor });
+
+  if (!runtime.tabIds.length) await restoreRuntime();
+
+  // Só canais que o usuário marcou e que segue, segundo a API da Twitch.
+  const live = await liveSelected();
+
+  await syncOpenTabs(live, settings);
+
+  // Rotaciona só com intervalo configurado e mais ao vivo do que abas.
+  if (settings.intervalMinutes > 0 && needsRotation(live.length, SLOTS)) {
+    const cursor = nextCursor(rotation.cursor, SLOTS, live.length);
+    await assignWindow(windowAt(live, cursor, SLOTS), settings);
+    await store.setRotation({ ...rotation, cursor });
+  }
+
+  await recordCycleEnd(live, runtime.tabLogins);
+  await scheduleCycle();
 }
 
 async function toggleChannel(login) {
@@ -155,6 +342,12 @@ async function toggleChannel(login) {
   if (set.has(login)) set.delete(login);
   else set.add(login);
   await store.setRotation({ ...rotation, channels: [...set] });
+
+  if (rotation.status === 'playing' && runtime.tabIds.length) {
+    const settings = await store.getSettings();
+    const live = await liveSelected();
+    await syncOpenTabs(live, settings);
+  }
 }
 
 async function applySettings(partial) {
@@ -163,8 +356,8 @@ async function applySettings(partial) {
   await store.setSettings(settings);
   const rotation = await store.getRotation();
   if (rotation.status === 'playing') {
-    const selected = await liveSelected();
-    scheduleRotation(selected.length, settings);
+    await applyAudioToAllTabs(settings);
+    await scheduleCycle();
   }
 }
 
@@ -253,5 +446,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === ALARM) rotate().catch((e) => console.error('rotate falhou:', e));
+  if (alarm.name === CYCLE_TIMER) {
+    syncCycle().catch((e) => console.error('syncCycle falhou:', e));
+  }
 });
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!runtime.tabIds.includes(tabId)) return;
+  if (changeInfo.status !== 'complete') return;
+  store.getSettings().then((settings) => applyTabAudio(tabId, settings));
+});
+
+restoreRuntime().catch((e) => console.error('restoreRuntime falhou:', e));

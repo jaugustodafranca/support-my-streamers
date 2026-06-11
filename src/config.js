@@ -17,6 +17,9 @@ export const TAB_GROUP_TITLE = 'Support My Streamers';
 // há 1 canal marcado, porque a janela usa min(SLOTS, nº de canais)).
 export const SLOTS = 2;
 
+// Quando rotação está em ∞ (0), ainda verificamos offline/raid a cada N min.
+export const HEALTH_CHECK_MINUTES = 5;
+
 // Opções de tempo de rotação (minutos). 0 = não trocar (∞).
 export const ROTATION_STEPS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 0];
 

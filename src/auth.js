@@ -32,6 +32,10 @@ export function parseAuthRedirect(redirectUrl) {
   };
 }
 
+export function isAuthExpired(auth) {
+  return Boolean(auth?.expiresAt && Date.now() >= auth.expiresAt);
+}
+
 export async function launchTwitchAuth(clientId) {
   const redirectUri = chrome.identity.getRedirectURL();
   const url = buildAuthUrl({ clientId, redirectUri });

@@ -3,8 +3,8 @@
   "name": "Support My Streamers",
   "version": "0.1.0",
   "description": "Rotaciona entre os streamers que você segue na Twitch, assistindo alguns por vez.",
-  "permissions": ["identity", "storage", "tabs", "tabGroups", "alarms"],
-  "host_permissions": ["https://api.twitch.tv/*"],
+  "permissions": ["identity", "storage", "tabs", "tabGroups", "alarms", "scripting"],
+  "host_permissions": ["https://api.twitch.tv/*", "https://www.twitch.tv/*"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

@@ -1,4 +1,6 @@
 import { t } from '../i18n.js';
+import { needsRotation } from '../rotation.js';
+import { SLOTS } from '../config.js';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -43,14 +45,15 @@ function showToast(message) {
   }, 3000);
 }
 
-const SLOTS = 2;
-
 function statusText(state) {
   const { rotation, settings, live } = state;
   const lang = settings.lang || 'pt';
   const selectedLive = rotation.channels.filter((c) => live.some((s) => s.login === c)).length;
   if (rotation.status === 'playing') {
-    return t(lang, 'status_playing', Math.min(SLOTS, selectedLive), selectedLive, settings.intervalMinutes);
+    const rotating =
+      needsRotation(selectedLive, SLOTS) && settings.intervalMinutes > 0;
+    const interval = rotating ? settings.intervalMinutes : 0;
+    return t(lang, 'status_playing', Math.min(SLOTS, selectedLive), selectedLive, interval);
   }
   if (rotation.status === 'paused') {
     return t(lang, 'status_paused', rotation.channels.length);
@@ -58,10 +61,10 @@ function statusText(state) {
   return t(lang, 'selected', rotation.channels.length);
 }
 
-function topbar() {
+function topbar(lang) {
   return `<header class="topbar">
     <h1 class="wordmark">support<em>my</em>streamers</h1>
-    <button class="icon-btn" data-action="options" aria-label="Opções">${GEAR_ICON}</button>
+    <button class="icon-btn" data-action="options" aria-label="${escapeHtml(t(lang, 'options_aria'))}">${GEAR_ICON}</button>
   </header>`;
 }
 
@@ -70,7 +73,9 @@ function render(state) {
 
   if (!state || (!('clientIdSet' in state) && !('authed' in state))) {
     if (state?.error) showToast(state.error);
-    app.appendChild(el('<div class="dev-note"><p>Algo deu errado. Tente reabrir o popup.</p></div>'));
+    app.appendChild(
+      el(`<div class="dev-note"><p>${escapeHtml(t('pt', 'popup_error'))}</p></div>`),
+    );
     return;
   }
 
@@ -101,7 +106,7 @@ function render(state) {
   const selected = new Set(rotation.channels);
   const playing = rotation.status === 'playing';
 
-  app.appendChild(el(topbar()));
+  app.appendChild(el(topbar(lang)));
   app.appendChild(
     el(`<p class="greeting">${escapeHtml(t(lang, 'hi'))} <strong>${escapeHtml(user.displayName || user.login)}</strong> · <button class="textlink" data-action="logout">${escapeHtml(t(lang, 'logout'))}</button></p>`),
   );
@@ -148,7 +153,7 @@ function render(state) {
           <span class="switch"></span>
           <span class="ch-info">
             <span class="ch-name">${escapeHtml(s.displayName || s.login)}</span>
-            <span class="ch-meta">${escapeHtml(s.game || 'Ao vivo')}</span>
+            <span class="ch-meta">${escapeHtml(s.game || t(lang, 'live_fallback'))}</span>
           </span>
           <span class="ch-viewers">${formatViewers(s.viewers)}</span>
         </label>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAuthUrl, parseAuthRedirect } from '../src/auth.js';
+import { buildAuthUrl, parseAuthRedirect, isAuthExpired } from '../src/auth.js';
 
 describe('buildAuthUrl', () => {
   it('inclui os parâmetros obrigatórios do implicit grant', () => {
@@ -35,5 +35,19 @@ describe('parseAuthRedirect', () => {
 
   it('lança erro quando não há access_token', () => {
     expect(() => parseAuthRedirect('https://x.chromiumapp.org/')).toThrow();
+  });
+});
+
+describe('isAuthExpired', () => {
+  it('retorna false sem expiresAt', () => {
+    expect(isAuthExpired({ accessToken: 'x' })).toBe(false);
+  });
+
+  it('retorna true quando expiresAt já passou', () => {
+    expect(isAuthExpired({ expiresAt: Date.now() - 1000 })).toBe(true);
+  });
+
+  it('retorna false quando expiresAt ainda é válido', () => {
+    expect(isAuthExpired({ expiresAt: Date.now() + 60_000 })).toBe(false);
   });
 });

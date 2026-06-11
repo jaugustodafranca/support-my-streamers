@@ -22,8 +22,11 @@ O que torna isso lurking legítimo (tolerado pela Twitch) e não viewbotting:
   recebe de um servidor uma lista de "canais pra rotacionar".
 - **As sugestões são descoberta pura** via `/helix/streams` (lives populares da
   Twitch). O usuário navega e escolhe. Nada curado nem direcionado por servidor.
-- **Sem mecânicas de evasão antifraude.** Mute é o mute normal do navegador;
-  nenhum truque pra enganar o filtro de viewer mutado da Twitch.
+- **Áudio:** o mute é no nível da aba do Chrome (o usuário não ouve). O player
+  da Twitch permanece com volume alto para a live continuar contando como viewer.
+- **Ciclo de sincronização:** a cada N minutos (ou 5 min quando rotação = ∞)
+  a extensão verifica quem ainda está ao vivo na lista do usuário, fecha abas
+  em raid sem substituto e rotaciona só quando há mais canais ao vivo do que abas.
 
 Fora de escopo permanente: venda de viewers, direcionamento de audiência por
 servidor, simulação de chat.
