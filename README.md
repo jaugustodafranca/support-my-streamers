@@ -154,7 +154,15 @@ AGENTS.md           AI assistant guide
 
 ## Contributing
 
-Issues and PRs are welcome! Read **[CONTRIBUTING.md](CONTRIBUTING.md)** first — quick setup, conventions (English-only code, Conventional Commits), and architecture boundaries in [AGENTS.md](AGENTS.md).
+Issues and PRs are welcome!
+
+1. **Fork** the repo and create a branch from `main`.
+2. **Set up**: `npm install && cp .env.example .env` (your Twitch Client ID) `&& npm run secrets:inject`.
+3. **Make your change** — English-only code, UI text in `src/i18n.js` (PT + EN).
+4. **Test**: `npm test` must pass (CI runs it on every PR).
+5. **Open a PR** with a [Conventional Commit](https://www.conventionalcommits.org/) title (`feat:`, `fix:`, `docs:`…) — it drives automated releases.
+
+Full guide: **[CONTRIBUTING.md](CONTRIBUTING.md)** · architecture boundaries: [AGENTS.md](AGENTS.md)
 
 ## Ethics & privacy
 
