@@ -8,7 +8,7 @@ import {
 } from '../src/twitchApi.js';
 
 describe('buildHeaders', () => {
-  it('monta Client-Id e Bearer', () => {
+  it('builds Client-Id and Bearer headers', () => {
     expect(buildHeaders('cid', 'tok')).toEqual({
       'Client-Id': 'cid',
       Authorization: 'Bearer tok',
@@ -17,32 +17,32 @@ describe('buildHeaders', () => {
 });
 
 describe('parseStreams', () => {
-  it('mapeia os campos relevantes', () => {
+  it('maps relevant fields', () => {
     const json = {
       data: [
         {
           user_login: 'foo',
           user_name: 'Foo',
           game_name: 'Chess',
-          title: 'oi',
+          title: 'hello',
           viewer_count: 42,
           thumbnail_url: 'u',
         },
       ],
     };
     expect(parseStreams(json)).toEqual([
-      { login: 'foo', displayName: 'Foo', game: 'Chess', title: 'oi', viewers: 42, thumbnail: 'u' },
+      { login: 'foo', displayName: 'Foo', game: 'Chess', title: 'hello', viewers: 42, thumbnail: 'u' },
     ]);
   });
 
-  it('lida com payload sem data', () => {
+  it('handles payload without data', () => {
     expect(parseStreams({})).toEqual([]);
     expect(parseStreams(null)).toEqual([]);
   });
 });
 
 describe('getFollowedLiveStreams', () => {
-  it('chama o endpoint certo e parseia', async () => {
+  it('calls correct endpoint and parses response', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
       json: async () => ({ data: [{ user_login: 'a', user_name: 'A', viewer_count: 1 }] }),
@@ -55,7 +55,7 @@ describe('getFollowedLiveStreams', () => {
     expect(res[0].login).toBe('a');
   });
 
-  it('lança ApiError em resposta não-ok', async () => {
+  it('throws ApiError on non-ok response', async () => {
     const fetchImpl = vi.fn(async () => ({ ok: false, status: 401 }));
     await expect(getFollowedLiveStreams(fetchImpl, 'c', 't', '1')).rejects.toBeInstanceOf(ApiError);
     await expect(getFollowedLiveStreams(fetchImpl, 'c', 't', '1')).rejects.toMatchObject({
@@ -65,7 +65,7 @@ describe('getFollowedLiveStreams', () => {
 });
 
 describe('getCurrentUser', () => {
-  it('retorna o primeiro usuário do payload', async () => {
+  it('returns first user from payload', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
       json: async () => ({ data: [{ id: '99', login: 'me', display_name: 'Me' }] }),

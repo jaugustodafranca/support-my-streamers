@@ -1,0 +1,51 @@
+---
+description: KISS, Clean Code, DRY — English-only source code
+alwaysApply: true
+---
+
+# Coding standards
+
+Inspired by [agents.md](https://agents.md/), [Clean Code](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) (Robert C. Martin), and pragmatic JS style guides.
+
+## Language
+
+- **English only** in `.js`, `.html` placeholders, tests, comments, `throw new Error(...)`.
+- **Exception:** `src/i18n.js` `MESSAGES.pt` / `MESSAGES.en` for UI copy only.
+
+## Principles
+
+| Principle | Rule |
+|---|---|
+| **KISS** | Simplest working solution. No premature abstractions. |
+| **YAGNI** | No speculative features, TODOs, or unused helpers. |
+| **DRY** | One place for tab rules (`decideTabAction`), constants (`config.js`). |
+| **SRP** | One reason to change per function/file. SW orchestrates; `rotation.js` computes. |
+| **Clean Code** | Meaningful names, small functions, early returns, no nested ternaries. |
+| **Testability** | Pure logic without `chrome.*`; inject `fetch` in API layer for tests. |
+
+## Style
+
+```javascript
+// Good
+const tabMuted = (settings) => settings.audio === 'muted';
+
+const handlePlayClick = async () => {
+  const state = await send({ type: 'PLAY' });
+  if (state?.error) showToast(state.error);
+};
+
+// Bad — Portuguese, vague name, magic number
+const mudo = (s) => s.audio === 'muted';
+const click = async () => { /* ... */ };
+```
+
+- `const` arrow functions; UI handlers: `handle` prefix.
+- Empty `catch` only at Chrome API boundaries; prefer a short comment why.
+- Guard content script: `globalThis.__smsPlayerActive`.
+- Tests: English `describe` / `it` labels; update tests when changing `rotation.js` or `auth.js`.
+
+## Diff discipline
+
+- Smallest correct diff.
+- Match existing file patterns.
+- Do not refactor unrelated code in the same change.

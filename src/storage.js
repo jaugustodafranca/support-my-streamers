@@ -1,4 +1,4 @@
-// Wrappers de chrome.storage.local com defaults. A área é injetável para teste.
+// chrome.storage.local wrappers with defaults. Storage area is injectable for tests.
 
 import { DEFAULT_SETTINGS, DEFAULT_ROTATION } from './config.js';
 

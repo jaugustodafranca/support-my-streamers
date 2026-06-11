@@ -1,0 +1,14 @@
+---
+description: Support My Streamers — Chrome MV3 extension context and invariants
+alwaysApply: true
+---
+
+# Support My Streamers
+
+Read **AGENTS.md** and **how-it-works.md** before changing behavior.
+
+- MV3 extension, JS modules, Vitest. Chrome APIs only in `background.js`.
+- English-only code; UI strings in `i18n.js` only.
+- `SLOTS = 2`, `syncCycle`, raid/offline rules — see `how-it-works.md`.
+- KISS / Clean Code / DRY — see `coding-standards.mdc`.
+- Run `npm test` after logic changes.

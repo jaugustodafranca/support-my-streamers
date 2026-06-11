@@ -9,7 +9,6 @@ import {
   clearAuth,
 } from '../src/storage.js';
 
-// Fake da área de storage do Chrome (get aceita uma chave string).
 function fakeArea() {
   const data = {};
   return {
@@ -26,7 +25,7 @@ function fakeArea() {
 }
 
 describe('settings', () => {
-  it('retorna defaults quando vazio', async () => {
+  it('returns defaults when empty', async () => {
     expect(await getSettings(fakeArea())).toEqual({
       intervalMinutes: 10,
       audio: 'muted',
@@ -34,7 +33,7 @@ describe('settings', () => {
     });
   });
 
-  it('mescla o salvo sobre os defaults', async () => {
+  it('merges saved values over defaults', async () => {
     const area = fakeArea();
     await setSettings({ intervalMinutes: 5 }, area);
     const s = await getSettings(area);
@@ -45,11 +44,11 @@ describe('settings', () => {
 });
 
 describe('rotation', () => {
-  it('default é stopped e vazio', async () => {
+  it('defaults to stopped and empty channels', async () => {
     expect(await getRotation(fakeArea())).toEqual({ channels: [], cursor: 0, status: 'stopped' });
   });
 
-  it('persiste canais selecionados', async () => {
+  it('persists selected channels', async () => {
     const area = fakeArea();
     await setRotation({ channels: ['a', 'b'], cursor: 0, status: 'playing' }, area);
     expect((await getRotation(area)).channels).toEqual(['a', 'b']);
@@ -57,7 +56,7 @@ describe('rotation', () => {
 });
 
 describe('auth', () => {
-  it('null por padrão, salva e limpa', async () => {
+  it('is null by default, then saves and clears', async () => {
     const area = fakeArea();
     expect(await getAuth(area)).toBeNull();
     await setAuth({ accessToken: 't' }, area);

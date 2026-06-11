@@ -1,8 +1,7 @@
-// Lógica pura da rotação. Sem dependência de chrome.* — fácil de testar.
+// Pure rotation logic. No chrome.* dependency — easy to test.
 
 /**
- * Retorna a "janela" de canais visíveis começando em `cursor`, com `slots`
- * posições, dando a volta (round-robin) quando passa do fim da lista.
+ * Visible channel window starting at cursor with slots positions (round-robin wrap).
  */
 export function windowAt(channels, cursor, slots) {
   if (!channels.length) return [];
@@ -14,13 +13,13 @@ export function windowAt(channels, cursor, slots) {
   return out;
 }
 
-/** Avança o cursor em `slots` posições, dando a volta. */
+/** Advance cursor by slots positions with wrap-around. */
 export function nextCursor(cursor, slots, length) {
   if (length <= 0) return 0;
   return (cursor + slots) % length;
 }
 
-/** Só faz sentido rotacionar se há mais canais do que abas. */
+/** Rotation applies only when there are more channels than tab slots. */
 export function needsRotation(length, slots) {
   return length > slots;
 }
@@ -34,7 +33,7 @@ const NON_CHANNEL_SEGMENTS = new Set([
   'collections',
 ]);
 
-/** Extrai o login do canal a partir da URL da aba (ex.: twitch.tv/nome). */
+/** Extract channel login from tab URL (e.g. twitch.tv/name). */
 export function parseChannelLogin(url) {
   try {
     const { hostname, pathname } = new URL(url);
@@ -47,13 +46,13 @@ export function parseChannelLogin(url) {
   }
 }
 
-/** Primeiro canal ao vivo ainda não ocupado por outra aba. */
+/** First live channel not already assigned to another tab. */
 export function nextReplacement(live, taken) {
   const takenSet = new Set(taken);
   return live.find((login) => !takenSet.has(login)) ?? null;
 }
 
-/** Canais ao vivo da lista ainda sem aba, até o limite de slots. */
+/** Live list channels without a tab yet, up to slot limit. */
 export function unshownLive(live, shown, slots) {
   const shownSet = new Set(shown);
   const limit = Math.min(slots, live.length);
@@ -66,8 +65,8 @@ export function unshownLive(live, shown, slots) {
 }
 
 /**
- * Decide o que fazer com uma aba no fim do ciclo.
- * Só considera canais da lista do usuário (`live`). Raid sem substituto → fecha.
+ * Decide tab action at end of sync cycle. Only user list channels (`live`).
+ * Raid with no replacement → close.
  * @returns {{ action: 'keep' | 'navigate' | 'close', login?: string }}
  */
 export function decideTabAction({ supportedLogin, currentLogin, live, taken }) {
@@ -85,7 +84,7 @@ export function decideTabAction({ supportedLogin, currentLogin, live, taken }) {
     return { action: 'navigate', login: replacement };
   }
 
-  // Offline sem ninguém na lista para trocar: mantém só se ainda está no canal apoiado.
+  // Offline with no replacement: keep only if still on supported channel page.
   if (onSupportedPage) {
     return { action: 'keep', login: supportedLogin };
   }

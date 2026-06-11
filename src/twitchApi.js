@@ -1,11 +1,10 @@
-// Wrapper das chamadas à API Helix da Twitch. `fetchImpl` é injetado para
-// facilitar os testes (em produção passamos o `fetch` global).
+// Twitch Helix API wrapper. fetchImpl is injected for tests (global fetch in production).
 
 import { HELIX_BASE } from './config.js';
 
 export class ApiError extends Error {
   constructor(status, where) {
-    super(`Erro da API da Twitch (${status}) em ${where}`);
+    super(`Twitch API error (${status}) at ${where}`);
     this.name = 'ApiError';
     this.status = status;
     this.where = where;

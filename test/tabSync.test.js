@@ -7,50 +7,50 @@ import {
 } from '../src/rotation.js';
 
 describe('parseChannelLogin', () => {
-  it('extrai login de URL de canal', () => {
+  it('extracts login from channel URL', () => {
     expect(parseChannelLogin('https://www.twitch.tv/StreamerOne')).toBe('streamerone');
     expect(parseChannelLogin('https://twitch.tv/StreamerOne/live')).toBe('streamerone');
   });
 
-  it('retorna null para URLs que não são canal', () => {
+  it('returns null for non-channel URLs', () => {
     expect(parseChannelLogin('https://www.twitch.tv/directory')).toBeNull();
     expect(parseChannelLogin('https://google.com')).toBeNull();
   });
 });
 
 describe('nextReplacement', () => {
-  it('retorna o primeiro ao vivo ainda não ocupado', () => {
+  it('returns first live channel not yet taken', () => {
     expect(nextReplacement(['a', 'b', 'c'], ['a'])).toBe('b');
     expect(nextReplacement(['a', 'b'], ['a', 'b'])).toBeNull();
   });
 });
 
 describe('decideTabAction', () => {
-  it('mantém quando o apoiado ainda está ao vivo na aba certa', () => {
+  it('keeps tab when supported channel is live on correct page', () => {
     expect(
       decideTabAction({ supportedLogin: 'a', currentLogin: 'a', live: ['a', 'b'], taken: [] }),
     ).toEqual({ action: 'keep', login: 'a' });
   });
 
-  it('volta para o apoiado se ele ainda está ao vivo mas a aba foi de raid', () => {
+  it('navigates back when supported is live but tab is on raid', () => {
     expect(
       decideTabAction({ supportedLogin: 'a', currentLogin: 'raid', live: ['a'], taken: [] }),
     ).toEqual({ action: 'navigate', login: 'a' });
   });
 
-  it('troca para outro ao vivo quando o apoiado saiu do ar', () => {
+  it('swaps to another live channel when supported went offline', () => {
     expect(
       decideTabAction({ supportedLogin: 'a', currentLogin: 'a', live: ['b'], taken: [] }),
     ).toEqual({ action: 'navigate', login: 'b' });
   });
 
-  it('mantém na página do apoiado quando offline e sem substituto', () => {
+  it('keeps supported offline page when no replacement', () => {
     expect(
       decideTabAction({ supportedLogin: 'a', currentLogin: 'a', live: [], taken: [] }),
     ).toEqual({ action: 'keep', login: 'a' });
   });
 
-  it('fecha quando offline, sem substituto e a aba está em raid', () => {
+  it('closes tab on raid when offline with no replacement', () => {
     expect(
       decideTabAction({ supportedLogin: 'a', currentLogin: 'raid', live: [], taken: [] }),
     ).toEqual({ action: 'close' });
@@ -58,7 +58,7 @@ describe('decideTabAction', () => {
 });
 
 describe('unshownLive', () => {
-  it('retorna ao vivo da lista que ainda não tem aba', () => {
+  it('returns live list channels without a tab yet', () => {
     expect(unshownLive(['a', 'b', 'c'], ['a'], 2)).toEqual(['b']);
     expect(unshownLive(['a', 'b'], ['a', 'b'], 2)).toEqual([]);
   });

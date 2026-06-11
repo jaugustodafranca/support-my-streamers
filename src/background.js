@@ -1,5 +1,4 @@
-// Service worker: orquestra autenticação, busca de follows ao vivo e a rotação
-// das abas. Concentra todo o efeito colateral de chrome.* aqui.
+// Service worker: auth, live follows, tab rotation. All chrome.* side effects live here.
 
 import { CLIENT_ID, TAB_GROUP_TITLE, SLOTS, HEALTH_CHECK_MINUTES } from './config.js';
 import { launchTwitchAuth, isAuthExpired } from './auth.js';
@@ -14,12 +13,12 @@ import {
 } from './rotation.js';
 import * as store from './storage.js';
 
-// Timer interno do Chrome — roda em silêncio, sem notificar o usuário.
+// Internal Chrome timer — silent, no user notification.
 const CYCLE_TIMER = 'cycle';
 
 const RUNTIME_KEY = 'smsRuntime';
 
-// Estado das abas — espelhado em chrome.storage.session para sobreviver ao SW.
+// Tab state mirrored in chrome.storage.session to survive service worker restarts.
 let runtime = { tabIds: [], tabLogins: [], groupId: null };
 
 async function persistRuntime() {
@@ -39,7 +38,7 @@ async function restoreRuntime() {
       tabIds.push(saved.tabIds[i]);
       tabLogins.push(saved.tabLogins[i] ?? null);
     } catch {
-      // aba fechada pelo usuário
+      // tab closed by user
     }
   }
 
@@ -71,7 +70,7 @@ async function injectPlayerScript(tabId) {
       files: ['src/twitchPlayer.js'],
     });
   } catch {
-    // página ainda carregando ou aba fechada
+    // page still loading or tab closed
   }
 }
 
@@ -81,7 +80,7 @@ async function applyTabAudio(tabId, settings) {
   try {
     await chrome.tabs.sendMessage(tabId, { type: 'ENSURE_PLAYER' });
   } catch {
-    // content script ainda não injetado
+    // content script not injected yet
   }
 }
 
@@ -90,7 +89,7 @@ async function applyAudioToAllTabs(settings) {
     try {
       await applyTabAudio(tabId, settings);
     } catch {
-      // aba fechada pelo usuário
+      // tab closed by user
     }
   }
 }
@@ -98,7 +97,7 @@ async function applyAudioToAllTabs(settings) {
 async function ensureUserId(auth, clientId) {
   if (auth.userId) return auth;
   const user = await getCurrentUser(fetch, clientId, auth.accessToken);
-  if (!user) throw new Error('Não consegui identificar o usuário da Twitch.');
+  if (!user) throw new Error('Could not resolve Twitch user.');
   const next = {
     ...auth,
     userId: user.id,
@@ -132,7 +131,7 @@ async function closeTabs() {
     try {
       await chrome.tabs.remove(id);
     } catch {
-      // aba já fechada pelo usuário — segue o jogo
+      // tab already closed by user
     }
   }
   runtime = { tabIds: [], tabLogins: [], groupId: null };
@@ -201,7 +200,7 @@ async function reconcileTabs(live, settings) {
       try {
         await chrome.tabs.remove(tabId);
       } catch {
-        // já fechada
+        // already closed
       }
       continue;
     }
@@ -217,7 +216,7 @@ async function reconcileTabs(live, settings) {
           muted: tabMuted(settings),
         });
       } catch {
-        // aba fechada durante o ciclo
+        // tab closed during cycle
       }
     }
   }
@@ -252,7 +251,7 @@ async function fillEmptySlots(live, settings) {
   await persistRuntime();
 }
 
-// Futuro: enviar ao backend (VPS) quanto tempo cada canal ficou aberto neste ciclo.
+// Future: send per-cycle stats to VPS backend.
 async function recordCycleEnd(_live, _tabLogins) {}
 
 async function scheduleCycle() {
@@ -272,7 +271,7 @@ async function start() {
   const rotation = await store.getRotation();
   const selected = await liveSelected();
   if (!selected.length) {
-    throw new Error('Nenhum canal selecionado está ao vivo agora.');
+    throw new Error('No selected channel is live right now.');
   }
   await openWindow(windowAt(selected, 0, SLOTS), settings);
   await store.setRotation({ ...rotation, cursor: 0, status: 'playing' });
@@ -320,12 +319,12 @@ async function syncCycle() {
 
   if (!runtime.tabIds.length) await restoreRuntime();
 
-  // Só canais que o usuário marcou e que segue, segundo a API da Twitch.
+  // Selected + followed channels that are live per Twitch API.
   const live = await liveSelected();
 
   await syncOpenTabs(live, settings);
 
-  // Rotaciona só com intervalo configurado e mais ao vivo do que abas.
+  // Rotate only with interval > 0 and more live channels than slots.
   if (settings.intervalMinutes > 0 && needsRotation(live.length, SLOTS)) {
     const cursor = nextCursor(rotation.cursor, SLOTS, live.length);
     await assignWindow(windowAt(live, cursor, SLOTS), settings);
@@ -394,8 +393,7 @@ async function getState() {
   }
 }
 
-// Executa `fn` (que pode lançar) e SEMPRE devolve um estado renderizável,
-// anexando `error` se algo falhar.
+// Runs fn (may throw) and always returns renderable state, attaching error on failure.
 async function withState(fn) {
   let error;
   try {
@@ -413,7 +411,7 @@ async function handle(msg) {
       return getState();
     case 'LOGIN':
       return withState(async () => {
-        if (!CLIENT_ID) throw new Error('Client-ID não configurado na extensão.');
+        if (!CLIENT_ID) throw new Error('CLIENT_ID is not configured in the extension.');
         const parsed = await launchTwitchAuth(CLIENT_ID);
         await store.setAuth(parsed);
         await ensureUserId(await store.getAuth(), CLIENT_ID);
@@ -434,7 +432,7 @@ async function handle(msg) {
     case 'STOP':
       return withState(stop);
     default:
-      throw new Error(`Mensagem desconhecida: ${msg.type}`);
+      throw new Error(`Unknown message type: ${msg.type}`);
   }
 }
 
@@ -442,12 +440,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   handle(msg)
     .then(sendResponse)
     .catch((e) => sendResponse({ error: String(e.message || e) }));
-  return true; // resposta assíncrona
+  return true; // async response
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === CYCLE_TIMER) {
-    syncCycle().catch((e) => console.error('syncCycle falhou:', e));
+    syncCycle().catch((e) => console.error('syncCycle failed:', e));
   }
 });
 
@@ -457,4 +455,4 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   store.getSettings().then((settings) => applyTabAudio(tabId, settings));
 });
 
-restoreRuntime().catch((e) => console.error('restoreRuntime falhou:', e));
+restoreRuntime().catch((e) => console.error('restoreRuntime failed:', e));

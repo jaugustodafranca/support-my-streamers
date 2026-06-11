@@ -1,5 +1,4 @@
-// OAuth da Twitch via Implicit Grant. As funções puras (buildAuthUrl,
-// parseAuthRedirect) são testáveis; launchTwitchAuth usa chrome.identity.
+// Twitch OAuth implicit grant. Pure helpers are testable; launchTwitchAuth uses chrome.identity.
 
 import { TWITCH_AUTH_BASE, SCOPES } from './config.js';
 
@@ -20,8 +19,8 @@ export function parseAuthRedirect(redirectUrl) {
   const accessToken = params.get('access_token');
   if (!accessToken) {
     const reason =
-      params.get('error_description') || params.get('error') || 'sem access_token na resposta';
-    throw new Error(`Autenticação falhou: ${reason}`);
+      params.get('error_description') || params.get('error') || 'missing access_token in response';
+    throw new Error(`Authentication failed: ${reason}`);
   }
   const expiresIn = Number(params.get('expires_in') || 0);
   return {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildAuthUrl, parseAuthRedirect, isAuthExpired } from '../src/auth.js';
 
 describe('buildAuthUrl', () => {
-  it('inclui os parâmetros obrigatórios do implicit grant', () => {
+  it('includes required implicit grant parameters', () => {
     const url = buildAuthUrl({
       clientId: 'cid',
       redirectUri: 'https://x.chromiumapp.org/',
@@ -17,7 +17,7 @@ describe('buildAuthUrl', () => {
 });
 
 describe('parseAuthRedirect', () => {
-  it('extrai o token do fragmento', () => {
+  it('extracts token from fragment', () => {
     const r = parseAuthRedirect(
       'https://x.chromiumapp.org/#access_token=abc&token_type=bearer&expires_in=3600&scope=user%3Aread%3Afollows',
     );
@@ -27,27 +27,27 @@ describe('parseAuthRedirect', () => {
     expect(typeof r.expiresAt).toBe('number');
   });
 
-  it('lança erro quando o redirect traz erro', () => {
+  it('throws when redirect contains error', () => {
     expect(() =>
       parseAuthRedirect('https://x.chromiumapp.org/#error=access_denied&error_description=no'),
     ).toThrow(/access_denied|no/);
   });
 
-  it('lança erro quando não há access_token', () => {
+  it('throws when access_token is missing', () => {
     expect(() => parseAuthRedirect('https://x.chromiumapp.org/')).toThrow();
   });
 });
 
 describe('isAuthExpired', () => {
-  it('retorna false sem expiresAt', () => {
+  it('returns false without expiresAt', () => {
     expect(isAuthExpired({ accessToken: 'x' })).toBe(false);
   });
 
-  it('retorna true quando expiresAt já passou', () => {
+  it('returns true when expiresAt is in the past', () => {
     expect(isAuthExpired({ expiresAt: Date.now() - 1000 })).toBe(true);
   });
 
-  it('retorna false quando expiresAt ainda é válido', () => {
+  it('returns false when expiresAt is still valid', () => {
     expect(isAuthExpired({ expiresAt: Date.now() + 60_000 })).toBe(false);
   });
 });

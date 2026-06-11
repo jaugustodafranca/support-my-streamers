@@ -1,6 +1,5 @@
-// Internacionalização manual (PT/EN), selecionável pelo usuário nas Opções.
-// Não usamos chrome.i18n porque ele segue o idioma do navegador, não a escolha
-// do usuário. Valores podem ser string ou função (para textos com variáveis).
+// Manual i18n (PT/EN), user-selected in Options. Not chrome.i18n (browser locale).
+// Values may be strings or functions for interpolated copy.
 
 export const LANGS = ['pt', 'en'];
 
@@ -16,6 +15,8 @@ const MESSAGES = {
     stop: 'Parar',
     options: 'opções',
     options_aria: 'Opções',
+    lang_aria: 'Idioma',
+    loading: 'Carregando…',
     live_fallback: 'Ao vivo',
     popup_error: 'Algo deu errado. Tente reabrir o popup.',
     save_error: 'Não foi possível salvar. Tente de novo.',
@@ -59,6 +60,8 @@ const MESSAGES = {
     stop: 'Stop',
     options: 'options',
     options_aria: 'Options',
+    lang_aria: 'Language',
+    loading: 'Loading…',
     live_fallback: 'Live',
     popup_error: 'Something went wrong. Try reopening the popup.',
     save_error: 'Could not save. Try again.',
@@ -100,7 +103,7 @@ export function t(lang, key, ...args) {
   return typeof value === 'function' ? value(...args) : value;
 }
 
-/** Rótulo do tempo de rotação: "10 min" ou "não trocar" (quando 0/∞). */
+/** Rotation interval label: "10 min" or never-switch when 0/∞. */
 export function formatInterval(lang, minutes) {
   if (!minutes) return t(lang, 'time_never');
   return `${minutes} ${t(lang, 'minutes_unit')}`;

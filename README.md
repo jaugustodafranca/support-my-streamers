@@ -8,6 +8,8 @@ extensão abre 2 por vez num grupo de abas, rotacionando a cada N minutos.
 escolheu. Não inflama audiência de terceiros, não direciona viewers por servidor
 e não simula chat.
 
+**AI assistants:** read [AGENTS.md](AGENTS.md) ([agents.md](https://agents.md/) format) and [coding standards](.cursor/rules/coding-standards.mdc). **Code in English**; UI copy in `src/i18n.js` only.
+
 ## Estrutura
 
 ```
@@ -19,10 +21,18 @@ src/
   auth.js              OAuth da Twitch (implicit grant)
   storage.js           Wrappers de chrome.storage.local
   background.js        Service worker (orquestra tudo)
+  twitchPlayer.js      Content script (volume, overlays na Twitch)
   popup/               UI de ação rápida (play/pause/seleção)
   options/             Configurações + Client-ID
 test/                  Testes (Vitest) da lógica pura
+AGENTS.md              Instruções para IAs (arquitetura, invariantes)
+how-it-works.md        Tab cycle, audio, raid rules (English)
 ```
+
+## Behavior
+
+Sync cycle, offline/raid rules, audio, and player details:
+[how-it-works.md](how-it-works.md).
 
 ## Setup do desenvolvedor (uma vez, só você)
 

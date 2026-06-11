@@ -22,6 +22,61 @@ body {
   line-height: 1;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lang-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+.lang-select:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+.lang-select:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+
+.loading-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: 8px 18px 28px;
+}
+
+.loading-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.loading-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet);
+  box-shadow: 0 0 0 0 var(--violet-soft);
+  animation: pulse 1.8s ease-out infinite;
+}
+
 .icon-btn {
   display: grid;
   place-items: center;
@@ -296,14 +351,10 @@ body {
 
 /* ---------- States ---------- */
 .hero {
-  padding: 22px 22px 26px;
+  padding: 4px 22px 26px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-.hero .wordmark {
-  font-size: 30px;
-  line-height: 0.98;
 }
 .hero-sub {
   margin: 0;

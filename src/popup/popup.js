@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { needsRotation } from '../rotation.js';
 import { SLOTS } from '../config.js';
+import { getSettings } from '../storage.js';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -61,20 +62,49 @@ function statusText(state) {
   return t(lang, 'selected', rotation.channels.length);
 }
 
-function topbar(lang) {
-  return `<header class="topbar">
+const setDocumentLang = (lang) => {
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+};
+
+const langSelect = (lang) =>
+  `<select class="lang-select" data-lang aria-label="${escapeHtml(t(lang, 'lang_aria'))}">
+    <option value="pt" ${lang === 'pt' ? 'selected' : ''}>🇧🇷 PT</option>
+    <option value="en" ${lang === 'en' ? 'selected' : ''}>🇺🇸 EN</option>
+  </select>`;
+
+const topbar = (lang) =>
+  `<header class="topbar">
     <h1 class="wordmark">support<em>my</em>streamers</h1>
-    <button class="icon-btn" data-action="options" aria-label="${escapeHtml(t(lang, 'options_aria'))}">${GEAR_ICON}</button>
+    <div class="topbar-actions">
+      ${langSelect(lang)}
+      <button class="icon-btn" data-action="options" aria-label="${escapeHtml(t(lang, 'options_aria'))}">${GEAR_ICON}</button>
+    </div>
   </header>`;
-}
+
+const renderLoading = (lang) => {
+  app.innerHTML = '';
+  setDocumentLang(lang);
+  app.appendChild(
+    el(`${topbar(lang)}
+      <div class="loading-body">
+        <p class="loading-text">
+          <span class="loading-dot" aria-hidden="true"></span>
+          ${escapeHtml(t(lang, 'loading'))}
+        </p>
+      </div>`),
+  );
+};
 
 function render(state) {
   app.innerHTML = '';
+  const lang = state?.settings?.lang || 'pt';
+  setDocumentLang(lang);
 
   if (!state || (!('clientIdSet' in state) && !('authed' in state))) {
     if (state?.error) showToast(state.error);
+    app.appendChild(el(topbar(lang)));
     app.appendChild(
-      el(`<div class="dev-note"><p>${escapeHtml(t('pt', 'popup_error'))}</p></div>`),
+      el(`<div class="dev-note"><p>${escapeHtml(t(lang, 'popup_error'))}</p></div>`),
     );
     return;
   }
@@ -89,12 +119,10 @@ function render(state) {
     return;
   }
 
-  const lang = state.settings?.lang || 'pt';
-
   if (!state.authed) {
+    app.appendChild(el(topbar(lang)));
     app.appendChild(
       el(`<div class="hero">
-        <h1 class="wordmark big">support<em>my</em>streamers</h1>
         <p class="hero-sub">${escapeHtml(t(lang, 'hero_sub'))}</p>
         <button class="play-btn wide" data-action="login">${escapeHtml(t(lang, 'connect'))}</button>
       </div>`),
@@ -193,6 +221,12 @@ app.addEventListener('click', async (e) => {
 });
 
 app.addEventListener('change', async (e) => {
+  if (e.target.dataset?.lang !== undefined) {
+    const state = await send({ type: 'SET_SETTINGS', settings: { lang: e.target.value } });
+    render(state);
+    return;
+  }
+
   const login = e.target.dataset?.toggle;
   if (!login) return;
   const state = await send({ type: 'TOGGLE_CHANNEL', login });
@@ -200,6 +234,9 @@ app.addEventListener('change', async (e) => {
 });
 
 async function init() {
+  const settings = await getSettings();
+  const lang = settings.lang || 'pt';
+  renderLoading(lang);
   const state = await send({ type: 'GET_STATE' });
   render(state);
 }
