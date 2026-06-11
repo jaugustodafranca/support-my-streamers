@@ -5,8 +5,8 @@ Thanks for your interest in improving **Support My Streamers**!
 ## Getting started
 
 ```bash
-git clone https://github.com/jaugustodafranca/support-my-streamer.git
-cd support-my-streamer
+git clone https://github.com/jaugustodafranca/support-my-streamers.git
+cd support-my-streamers
 npm install
 cp .env.example .env   # set TWITCH_CLIENT_ID (dev.twitch.tv/console/apps)
 npm run secrets:inject

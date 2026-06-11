@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/UI-PT%20%2F%20EN-7c3aed?style=for-the-badge" alt="PT / EN" />
   <img src="https://img.shields.io/badge/Privacy-no_backend-22c55e?style=for-the-badge" alt="No backend" />
   <br />
-  <a href="https://github.com/jaugustodafranca/support-my-streamer/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/jaugustodafranca/support-my-streamer/ci.yml?style=for-the-badge&label=tests" alt="CI status" /></a>
+  <a href="https://github.com/jaugustodafranca/support-my-streamers/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/jaugustodafranca/support-my-streamers/ci.yml?style=for-the-badge&label=tests" alt="CI status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="MIT license" /></a>
 </p>
 
