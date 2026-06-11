@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Support My Streamers",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Rotaciona entre os streamers que você segue na Twitch, assistindo alguns por vez.",
   "permissions": [
     "identity",

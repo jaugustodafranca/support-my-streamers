@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.0.0...support-my-streamers-v1.1.0) (2026-06-11)
+
+
+### Features
+
+* clearer permissions, review prompt, and store assets ([#3](https://github.com/jaugustodafranca/support-my-streamers/issues/3)) ([a716549](https://github.com/jaugustodafranca/support-my-streamers/commit/a716549ffdda814a8fb0f09e7f069b5197458301))
+
 ## [1.0.0](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v0.2.0...support-my-streamers-v1.0.0) (2026-06-11)
 
 
