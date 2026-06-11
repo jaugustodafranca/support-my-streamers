@@ -15,49 +15,46 @@ let countdownRefreshing = false;
 const GEAR_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const TV_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg>`;
 
-function send(msg) {
-  return chrome.runtime.sendMessage(msg);
-}
+const send = (message) => chrome.runtime.sendMessage(message);
 
-function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+const escapeHtml = (str) =>
+  String(str ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;',
-  })[c]);
-}
+  })[char]);
 
-function formatViewers(n) {
-  if (typeof n !== 'number') return '0';
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
-}
+const formatViewers = (count) => {
+  if (typeof count !== 'number') return '0';
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+  return String(count);
+};
 
-function el(html) {
-  const t = document.createElement('template');
-  t.innerHTML = html.trim();
-  return t.content.firstElementChild;
-}
+const htmlElement = (html) => {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content.firstElementChild;
+};
 
-function appendHtml(parent, html) {
-  const t = document.createElement('template');
-  t.innerHTML = html.trim();
-  parent.append(...t.content.children);
-}
+const appendHtml = (parent, html) => {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  parent.append(...template.content.children);
+};
 
-function showToast(message) {
+const showToast = (message) => {
   toast.textContent = message;
   toast.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.hidden = true;
   }, 3000);
-}
+};
 
 const selectedLiveCount = (rotation, live) =>
-  rotation.channels.filter((c) => live.some((s) => s.login === c)).length;
+  rotation.channels.filter((channel) => live.some((stream) => stream.login === channel)).length;
 
 const isRotating = (state) => {
   const { rotation, settings, live } = state;
@@ -163,11 +160,11 @@ const startCycleBar = (state) => {
 };
 
 const displayNameForLogin = (login, live) => {
-  const channel = live.find((s) => s.login === login);
-  return channel?.displayName || login;
+  const stream = live.find((item) => item.login === login);
+  return stream?.displayName || login;
 };
 
-function statusText(state) {
+const statusText = (state) => {
   const { rotation, settings, live } = state;
   const lang = settings.lang || 'pt';
   if (rotation.status === 'playing') {
@@ -183,7 +180,7 @@ function statusText(state) {
     return t(lang, 'status_paused', rotation.channels.length);
   }
   return t(lang, 'selected', rotation.channels.length);
-}
+};
 
 const setDocumentLang = (lang) => {
   document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
@@ -230,7 +227,7 @@ const renderLoading = (lang, messageKey = 'loading') => {
   );
 };
 
-function render(state) {
+const render = (state) => {
   stopCountdown();
   window.scrollTo(0, 0);
   app.innerHTML = '';
@@ -239,16 +236,16 @@ function render(state) {
 
   if (!state || (!('clientIdSet' in state) && !('authed' in state))) {
     if (state?.error) showToast(state.error);
-    app.appendChild(el(topbar(lang)));
+    app.appendChild(htmlElement(topbar(lang)));
     app.appendChild(
-      el(`<div class="dev-note"><p>${escapeHtml(t(lang, 'popup_error'))}</p></div>`),
+      htmlElement(`<div class="dev-note"><p>${escapeHtml(t(lang, 'popup_error'))}</p></div>`),
     );
     return;
   }
 
   if (!state.clientIdSet) {
     app.appendChild(
-      el(`<div class="dev-note">
+      htmlElement(`<div class="dev-note">
         <h1 class="wordmark" style="font-size:22px">support<em>my</em>streamers</h1>
         <p style="color:var(--text-faint);font-size:13px;line-height:1.5">${escapeHtml(t(lang, 'dev_client_id_note'))}</p>
       </div>`),
@@ -257,9 +254,9 @@ function render(state) {
   }
 
   if (!state.authed) {
-    app.appendChild(el(topbar(lang)));
+    app.appendChild(htmlElement(topbar(lang)));
     app.appendChild(
-      el(`<div class="hero">
+      htmlElement(`<div class="hero">
         <p class="hero-sub">${escapeHtml(t(lang, 'hero_sub'))}</p>
         <button class="play-btn wide" data-action="login">${escapeHtml(t(lang, 'connect'))}</button>
       </div>`),
@@ -271,9 +268,9 @@ function render(state) {
   const selected = new Set(rotation.channels);
   const playing = rotation.status === 'playing';
 
-  app.appendChild(el(topbar(lang)));
+  app.appendChild(htmlElement(topbar(lang)));
   app.appendChild(
-    el(`<p class="greeting">${escapeHtml(t(lang, 'hi'))} <strong>${escapeHtml(user.displayName || user.login)}</strong> · <button class="textlink" data-action="logout">${escapeHtml(t(lang, 'logout'))}</button></p>`),
+    htmlElement(`<p class="greeting">${escapeHtml(t(lang, 'hi'))} <strong>${escapeHtml(user.displayName || user.login)}</strong> · <button class="textlink" data-action="logout">${escapeHtml(t(lang, 'logout'))}</button></p>`),
   );
 
   const playLabel = rotation.status === 'paused' ? t(lang, 'resume') : t(lang, 'start');
@@ -282,7 +279,7 @@ function render(state) {
     : `<button class="play-btn wide" data-action="play">▶ ${escapeHtml(playLabel)}</button>`;
 
   app.appendChild(
-    el(`<div class="dock dock--single">
+    htmlElement(`<div class="dock dock--single">
       ${dockControls}
       <div class="ticker">${playing ? '<span class="pulse"></span>' : ''}${escapeHtml(statusText(state))}</div>
       ${playing ? cycleBarHtml(state) : ''}
@@ -291,14 +288,14 @@ function render(state) {
   startCycleBar(state);
 
   if (state.showReviewPrompt) {
-    app.appendChild(el(reviewBanner(lang)));
+    app.appendChild(htmlElement(reviewBanner(lang)));
   }
 
-  if (state.error) app.appendChild(el(`<p class="error-line">${escapeHtml(state.error)}</p>`));
+  if (state.error) app.appendChild(htmlElement(`<p class="error-line">${escapeHtml(state.error)}</p>`));
 
   if (!live.length) {
     app.appendChild(
-      el(`<div class="empty">
+      htmlElement(`<div class="empty">
         <div class="empty-glyph">${TV_ICON}</div>
         <p class="empty-title">${escapeHtml(t(lang, 'empty_title'))}</p>
         <p class="empty-sub">${escapeHtml(t(lang, 'empty_sub'))}</p>
@@ -307,26 +304,26 @@ function render(state) {
     return;
   }
 
-  const main = el('<div class="popup-main"></div>');
+  const main = htmlElement('<div class="popup-main"></div>');
   main.appendChild(
-    el(`<div class="section-head">
+    htmlElement(`<div class="section-head">
       <span class="label"><span class="live-dot"></span>${escapeHtml(t(lang, 'live_now'))}</span>
       <span class="count">${live.length}</span>
     </div>`),
   );
 
-  const list = el(`<ul class="channels${listRevealed ? '' : ' reveal'}"></ul>`);
-  live.forEach((s, i) => {
+  const list = htmlElement(`<ul class="channels${listRevealed ? '' : ' reveal'}"></ul>`);
+  live.forEach((stream, index) => {
     list.appendChild(
-      el(`<li class="ch" style="--i:${i}">
+      htmlElement(`<li class="ch" style="--i:${index}">
         <label class="ch-row">
-          <input type="checkbox" class="vh" data-toggle="${escapeHtml(s.login)}" ${selected.has(s.login) ? 'checked' : ''} />
+          <input type="checkbox" class="vh" data-toggle="${escapeHtml(stream.login)}" ${selected.has(stream.login) ? 'checked' : ''} />
           <span class="switch"></span>
           <span class="ch-info">
-            <span class="ch-name">${escapeHtml(s.displayName || s.login)}</span>
-            <span class="ch-meta">${escapeHtml(s.game || t(lang, 'live_fallback'))}</span>
+            <span class="ch-name">${escapeHtml(stream.displayName || stream.login)}</span>
+            <span class="ch-meta">${escapeHtml(stream.game || t(lang, 'live_fallback'))}</span>
           </span>
-          <span class="ch-viewers">${formatViewers(s.viewers)}</span>
+          <span class="ch-viewers">${formatViewers(stream.viewers)}</span>
         </label>
       </li>`),
     );
@@ -334,7 +331,7 @@ function render(state) {
   main.appendChild(list);
   app.appendChild(main);
   listRevealed = true;
-}
+};
 
 const ACTION_TO_MSG = {
   login: 'LOGIN',
@@ -343,8 +340,8 @@ const ACTION_TO_MSG = {
   stop: 'STOP',
 };
 
-app.addEventListener('click', async (e) => {
-  const trigger = e.target.closest('[data-action]');
+const handleAppClick = async (event) => {
+  const trigger = event.target.closest('[data-action]');
   if (!trigger) return;
   const action = trigger.dataset.action;
 
@@ -382,8 +379,8 @@ app.addEventListener('click', async (e) => {
     const state = await send({ type: ACTION_TO_MSG[action] });
     if (state?.error) showToast(state.error);
     render(state);
-  } catch (err) {
-    showToast(String(err.message || err));
+  } catch (error) {
+    showToast(String(error.message || error));
     try {
       const state = await send({ type: 'GET_STATE' });
       render(state);
@@ -393,19 +390,19 @@ app.addEventListener('click', async (e) => {
   } finally {
     trigger.disabled = false;
   }
-});
+};
 
-app.addEventListener('change', async (e) => {
-  if (e.target.dataset?.lang !== undefined) {
-    const state = await send({ type: 'SET_SETTINGS', settings: { lang: e.target.value } });
+const handleAppChange = async (event) => {
+  if (event.target.dataset?.lang !== undefined) {
+    const state = await send({ type: 'SET_SETTINGS', settings: { lang: event.target.value } });
     render(state);
     return;
   }
 
-  const login = e.target.dataset?.toggle;
+  const login = event.target.dataset?.toggle;
   if (!login) return;
 
-  const checkbox = e.target;
+  const checkbox = event.target;
   try {
     const state = await send({ type: 'TOGGLE_CHANNEL', login });
     if (state?.error) {
@@ -413,13 +410,13 @@ app.addEventListener('change', async (e) => {
       showToast(state.error);
     }
     // Keep layout stable: checkbox already reflects the toggle; no full re-render.
-  } catch (err) {
+  } catch (error) {
     checkbox.checked = !checkbox.checked;
-    showToast(String(err.message || err));
+    showToast(String(error.message || error));
   }
-});
+};
 
-async function init() {
+const init = async () => {
   const settings = await getSettings();
   const lang = settings.lang || 'pt';
   const auth = await getAuth();
@@ -427,10 +424,13 @@ async function init() {
   try {
     const state = await send({ type: 'GET_STATE' });
     render(state);
-  } catch (err) {
-    showToast(String(err.message || err));
+  } catch (error) {
+    showToast(String(error.message || error));
     render({ settings, clientIdSet: true, authed: false });
   }
-}
+};
+
+app.addEventListener('click', handleAppClick);
+app.addEventListener('change', handleAppChange);
 
 init();

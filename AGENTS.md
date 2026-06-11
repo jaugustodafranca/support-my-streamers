@@ -38,11 +38,14 @@ Manual smoke test: load unpacked at `chrome://extensions`.
 - Keep **all `chrome.*` side effects** in `src/background.js` only.
 - Import constants from `config.js` (`SLOTS`, `HEALTH_CHECK_MINUTES`) — no magic numbers.
 - Follow **KISS**, **DRY**, **YAGNI**, **Clean Code** (see [`.cursor/rules/coding-standards.mdc`](.cursor/rules/coding-standards.mdc)).
+- **`const` arrow functions** over `function` declarations; UI handlers use `handle` prefix.
+- **Readable names** — no single-letter vars (`s`, `c`, `e`) in callbacks; use `stream`, `login`, `error` (loop index `i` only in short `for` loops).
 - Run `npm test` after changing pure modules.
 - Preserve **core invariants** in `how-it-works.md` (sync cycle, raid rules, audio, session persistence).
 
 ### Ask first
 
+- **Migrating to TypeScript** (would add a build step and change the stack below).
 - New npm dependencies.
 - New manifest permissions or host permissions.
 - Changing `SLOTS`, sync/raid rules, or audio behavior.

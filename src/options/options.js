@@ -5,12 +5,12 @@ import { t, formatInterval } from '../i18n.js';
 const $ = (id) => document.getElementById(id);
 let savedTimer = null;
 
-function intervalToIndex(minutes) {
-  const i = ROTATION_STEPS.indexOf(minutes);
-  return i === -1 ? ROTATION_STEPS.indexOf(10) : i;
-}
+const intervalToIndex = (minutes) => {
+  const stepIndex = ROTATION_STEPS.indexOf(minutes);
+  return stepIndex === -1 ? ROTATION_STEPS.indexOf(10) : stepIndex;
+};
 
-function applyI18n(lang) {
+const applyI18n = (lang) => {
   $('t-tagline').textContent = t(lang, 'opt_tagline');
   $('t-about-title').textContent = t(lang, 'about_title');
   $('t-about-text').textContent = t(lang, 'about_text');
@@ -24,21 +24,21 @@ function applyI18n(lang) {
   $('t-audio-on').textContent = t(lang, 'audio_on');
   $('t-powered-by').textContent = t(lang, 'powered_by');
   updateTimeLabel(lang);
-}
+};
 
-function updateTimeLabel(lang) {
+const updateTimeLabel = (lang) => {
   $('time-val').textContent = formatInterval(lang, ROTATION_STEPS[Number($('interval').value)]);
-}
+};
 
-function flashSaved(lang) {
+const flashSaved = (lang) => {
   $('saved').textContent = t(lang, 'saved');
   clearTimeout(savedTimer);
   savedTimer = setTimeout(() => {
     $('saved').textContent = '';
   }, 1500);
-}
+};
 
-async function persist(partial, lang) {
+const persist = async (partial, lang) => {
   const state = await chrome.runtime.sendMessage({ type: 'SET_SETTINGS', settings: partial });
   if (state?.error) {
     $('saved').textContent = t(lang, 'save_error');
@@ -49,30 +49,36 @@ async function persist(partial, lang) {
     return;
   }
   flashSaved(lang);
-}
+};
 
-async function load() {
-  const s = await getSettings();
-  $('lang').value = s.lang;
-  $('audio').value = s.audio;
-  $('interval').value = String(intervalToIndex(s.intervalMinutes));
-  applyI18n(s.lang);
-}
+const load = async () => {
+  const settings = await getSettings();
+  $('lang').value = settings.lang;
+  $('audio').value = settings.audio;
+  $('interval').value = String(intervalToIndex(settings.intervalMinutes));
+  applyI18n(settings.lang);
+};
 
-$('lang').addEventListener('change', () => {
+const handleLangChange = () => {
   const lang = $('lang').value;
   applyI18n(lang);
   persist({ lang }, lang);
-});
+};
 
-$('interval').addEventListener('input', () => updateTimeLabel($('lang').value));
-$('interval').addEventListener('change', () => {
+const handleIntervalInput = () => updateTimeLabel($('lang').value);
+
+const handleIntervalChange = () => {
   const lang = $('lang').value;
   persist({ intervalMinutes: ROTATION_STEPS[Number($('interval').value)] }, lang);
-});
+};
 
-$('audio').addEventListener('change', () => {
+const handleAudioChange = () => {
   persist({ audio: $('audio').value }, $('lang').value);
-});
+};
+
+$('lang').addEventListener('change', handleLangChange);
+$('interval').addEventListener('input', handleIntervalInput);
+$('interval').addEventListener('change', handleIntervalChange);
+$('audio').addEventListener('change', handleAudioChange);
 
 load();

@@ -25,6 +25,14 @@ Inspired by [agents.md](https://agents.md/), [Clean Code](https://blog.cleancode
 
 ## Style
 
+### Functions
+
+- **Prefer `const` arrow functions** — not `function` declarations.
+- Sync: `const tabMuted = (settings) => …`
+- Async: `const fetchLive = async () => …`
+- UI handlers: **`handle` prefix** — `const handlePlayClick = async () => …`
+- Use `function` only when unavoidable (e.g. hoisting across a tight mutual-recursion pair). Default is `const`.
+
 ```javascript
 // Good
 const tabMuted = (settings) => settings.audio === 'muted';
@@ -34,12 +42,38 @@ const handlePlayClick = async () => {
   if (state?.error) showToast(state.error);
 };
 
-// Bad — Portuguese, vague name, magic number
-const mudo = (s) => s.audio === 'muted';
+// Bad — function keyword, Portuguese, vague name
+function mudo(s) { return s.audio === 'muted'; }
 const click = async () => { /* ... */ };
 ```
 
-- `const` arrow functions; UI handlers: `handle` prefix.
+### Naming (readability)
+
+- **No single-letter variables** in callbacks or business logic.
+- Name what the value *is*: `stream`, `login`, `tabId`, `error` — not `s`, `c`, `e`, `n`.
+- **`for` loop index only:** `i` / `j` allowed when the loop body is short and index-only.
+- **`catch`:** use `error`, not `e`.
+- **`map` / `filter` / `forEach`:** name the element (`(stream) => stream.login`, not `(s) => s.login`).
+- Prefix `_` only for intentionally unused parameters (e.g. `_live` in a stub).
+
+```javascript
+// Good
+rotation.channels.filter((login) => liveLogins.has(login));
+live.forEach((stream, index) => { /* ... */ });
+
+// Bad
+rotation.channels.filter((c) => liveLogins.has(c));
+live.forEach((s, i) => { /* ... */ });
+```
+
+### Types
+
+- **JavaScript only** — no TypeScript, no build step (see `AGENTS.md`).
+- Optional **JSDoc** on exported pure helpers when it clarifies shapes (`@param`, `@returns`).
+- Do not add TypeScript or `@ts-check` without an explicit project decision.
+
+### Other
+
 - Empty `catch` only at Chrome API boundaries; prefer a short comment why.
 - Guard content script: `globalThis.__smsPlayerActive`.
 - Tests: English `describe` / `it` labels; update tests when changing `rotation.js` or `auth.js`.

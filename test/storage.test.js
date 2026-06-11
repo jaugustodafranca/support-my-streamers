@@ -9,7 +9,7 @@ import {
   clearAuth,
 } from '../src/storage.js';
 
-function fakeArea() {
+const fakeArea = () => {
   const data = {};
   return {
     async get(key) {
@@ -36,10 +36,10 @@ describe('settings', () => {
   it('merges saved values over defaults', async () => {
     const area = fakeArea();
     await setSettings({ intervalMinutes: 5 }, area);
-    const s = await getSettings(area);
-    expect(s.intervalMinutes).toBe(5);
-    expect(s.audio).toBe('muted');
-    expect(s.lang).toBe('pt');
+    const settings = await getSettings(area);
+    expect(settings.intervalMinutes).toBe(5);
+    expect(settings.audio).toBe('muted');
+    expect(settings.lang).toBe('pt');
   });
 });
 

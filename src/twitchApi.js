@@ -11,37 +11,35 @@ export class ApiError extends Error {
   }
 }
 
-export function buildHeaders(clientId, token) {
-  return {
-    'Client-Id': clientId,
-    Authorization: `Bearer ${token}`,
-  };
-}
+export const buildHeaders = (clientId, token) => ({
+  'Client-Id': clientId,
+  Authorization: `Bearer ${token}`,
+});
 
-export function parseStreams(json) {
+export const parseStreams = (json) => {
   if (!json || !Array.isArray(json.data)) return [];
-  return json.data.map((s) => ({
-    login: s.user_login,
-    displayName: s.user_name,
-    game: s.game_name,
-    title: s.title,
-    viewers: s.viewer_count,
-    thumbnail: s.thumbnail_url,
+  return json.data.map((stream) => ({
+    login: stream.user_login,
+    displayName: stream.user_name,
+    game: stream.game_name,
+    title: stream.title,
+    viewers: stream.viewer_count,
+    thumbnail: stream.thumbnail_url,
   }));
-}
+};
 
-export async function getCurrentUser(fetchImpl, clientId, token) {
+export const getCurrentUser = async (fetchImpl, clientId, token) => {
   const res = await fetchImpl(`${HELIX_BASE}/users`, {
     headers: buildHeaders(clientId, token),
   });
   if (!res.ok) throw new ApiError(res.status, 'getCurrentUser');
   const json = await res.json();
   return json.data?.[0] ?? null;
-}
+};
 
-export async function getFollowedLiveStreams(fetchImpl, clientId, token, userId) {
+export const getFollowedLiveStreams = async (fetchImpl, clientId, token, userId) => {
   const url = `${HELIX_BASE}/streams/followed?user_id=${encodeURIComponent(userId)}&first=100`;
   const res = await fetchImpl(url, { headers: buildHeaders(clientId, token) });
   if (!res.ok) throw new ApiError(res.status, 'getFollowedLiveStreams');
   return parseStreams(await res.json());
-}
+};
