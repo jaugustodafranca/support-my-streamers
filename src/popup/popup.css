@@ -30,10 +30,16 @@ body {
 
 .lang-select {
   height: 32px;
-  padding: 0 8px;
+  padding: 0 28px 0 10px;
   border: 1px solid var(--border-soft);
   border-radius: var(--r-sm);
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  appearance: none;
+  -webkit-appearance: none;
   color: var(--text-dim);
   font-family: var(--display);
   font-size: 11px;
@@ -200,6 +206,16 @@ body {
   background: var(--violet);
   box-shadow: 0 0 0 0 var(--violet-soft);
   animation: pulse 1.8s ease-out infinite;
+}
+
+.countdown {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 2px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 .error-line {
   margin: 0;

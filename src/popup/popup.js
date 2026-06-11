@@ -1,4 +1,4 @@
-import { t } from '../i18n.js';
+import { t, formatCountdown } from '../i18n.js';
 import { needsRotation } from '../rotation.js';
 import { SLOTS } from '../config.js';
 import { getSettings } from '../storage.js';
@@ -7,6 +7,9 @@ const app = document.getElementById('app');
 const toast = document.getElementById('toast');
 let toastTimer = null;
 let listRevealed = false;
+let countdownTimer = null;
+let countdownState = null;
+let countdownRefreshing = false;
 
 const GEAR_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const TV_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg>`;
@@ -46,13 +49,64 @@ function showToast(message) {
   }, 3000);
 }
 
+const selectedLiveCount = (rotation, live) =>
+  rotation.channels.filter((c) => live.some((s) => s.login === c)).length;
+
+const isRotating = (state) => {
+  const { rotation, settings, live } = state;
+  if (rotation.status !== 'playing') return false;
+  const count = selectedLiveCount(rotation, live);
+  return needsRotation(count, SLOTS) && settings.intervalMinutes > 0;
+};
+
+const countdownLabel = (state) => {
+  const lang = state.settings?.lang || 'pt';
+  if (!state.nextCycleAt) return t(lang, 'next_rotation_soon');
+  const remaining = state.nextCycleAt - Date.now();
+  if (remaining <= 0) return t(lang, 'next_rotation_soon');
+  return t(lang, 'next_rotation', formatCountdown(remaining));
+};
+
+const stopCountdown = () => {
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  countdownState = null;
+  countdownRefreshing = false;
+};
+
+const refreshCountdownState = async () => {
+  if (countdownRefreshing) return;
+  countdownRefreshing = true;
+  try {
+    const state = await send({ type: 'GET_STATE' });
+    render(state);
+  } finally {
+    countdownRefreshing = false;
+  }
+};
+
+const tickCountdown = () => {
+  const el = document.querySelector('[data-countdown]');
+  if (!el || !countdownState?.nextCycleAt) return;
+  const remaining = countdownState.nextCycleAt - Date.now();
+  el.textContent = countdownLabel(countdownState);
+  if (remaining <= 0) refreshCountdownState();
+};
+
+const startCountdown = (state) => {
+  stopCountdown();
+  if (!isRotating(state) || !state.nextCycleAt) return;
+  countdownState = state;
+  tickCountdown();
+  countdownTimer = setInterval(tickCountdown, 1000);
+};
+
 function statusText(state) {
   const { rotation, settings, live } = state;
   const lang = settings.lang || 'pt';
-  const selectedLive = rotation.channels.filter((c) => live.some((s) => s.login === c)).length;
+  const selectedLive = selectedLiveCount(rotation, live);
   if (rotation.status === 'playing') {
-    const rotating =
-      needsRotation(selectedLive, SLOTS) && settings.intervalMinutes > 0;
+    const rotating = isRotating(state);
     const interval = rotating ? settings.intervalMinutes : 0;
     return t(lang, 'status_playing', Math.min(SLOTS, selectedLive), selectedLive, interval);
   }
@@ -96,6 +150,7 @@ const renderLoading = (lang) => {
 };
 
 function render(state) {
+  stopCountdown();
   app.innerHTML = '';
   const lang = state?.settings?.lang || 'pt';
   setDocumentLang(lang);
@@ -140,6 +195,7 @@ function render(state) {
   );
 
   const playLabel = rotation.status === 'paused' ? t(lang, 'resume') : t(lang, 'start');
+  const showCountdown = isRotating(state) && state.nextCycleAt;
   app.appendChild(
     el(`<div class="dock">
       ${
@@ -149,8 +205,10 @@ function render(state) {
       }
       <button class="ghost-btn" data-action="stop" ${rotation.status === 'stopped' ? 'disabled' : ''}>${escapeHtml(t(lang, 'stop'))}</button>
       <div class="ticker">${playing ? '<span class="pulse"></span>' : ''}${escapeHtml(statusText(state))}</div>
+      ${showCountdown ? `<p class="countdown" data-countdown>${escapeHtml(countdownLabel(state))}</p>` : ''}
     </div>`),
   );
+  startCountdown(state);
 
   if (state.error) app.appendChild(el(`<p class="error-line">${escapeHtml(state.error)}</p>`));
 

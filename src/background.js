@@ -360,11 +360,17 @@ async function applySettings(partial) {
   }
 }
 
+async function getNextCycleAt() {
+  const alarm = await chrome.alarms.get(CYCLE_TIMER);
+  return alarm?.scheduledTime ?? null;
+}
+
 async function getState() {
   const auth = await store.getAuth();
   const settings = await store.getSettings();
   const rotation = await store.getRotation();
-  const base = { clientIdSet: !!CLIENT_ID, settings, rotation };
+  const nextCycleAt = rotation.status === 'playing' ? await getNextCycleAt() : null;
+  const base = { clientIdSet: !!CLIENT_ID, settings, rotation, nextCycleAt };
 
   if (!auth || !CLIENT_ID) {
     return { ...base, authed: false, user: null, live: [] };

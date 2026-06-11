@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { t, formatInterval } from '../src/i18n.js';
+import { t, formatInterval, formatCountdown } from '../src/i18n.js';
 
 describe('t', () => {
   it('returns simple string for locale', () => {
@@ -27,5 +27,20 @@ describe('formatInterval', () => {
   it('shows never-switch label when zero', () => {
     expect(formatInterval('pt', 0)).toBe('não trocar');
     expect(formatInterval('en', 0)).toBe('never switch');
+  });
+});
+
+describe('formatCountdown', () => {
+  it('formats sub-hour remaining time', () => {
+    expect(formatCountdown(125_000)).toBe('2:05');
+    expect(formatCountdown(5_000)).toBe('0:05');
+  });
+
+  it('formats hour or longer remaining time', () => {
+    expect(formatCountdown(3_661_000)).toBe('1:01:01');
+  });
+
+  it('never shows negative values', () => {
+    expect(formatCountdown(-1_000)).toBe('0:00');
   });
 });

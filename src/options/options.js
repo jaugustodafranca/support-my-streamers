@@ -22,6 +22,7 @@ function applyI18n(lang) {
   $('t-audio-hint').textContent = t(lang, 'audio_hint');
   $('t-audio-muted').textContent = t(lang, 'audio_muted');
   $('t-audio-on').textContent = t(lang, 'audio_on');
+  $('t-powered-by').textContent = t(lang, 'powered_by');
   updateTimeLabel(lang);
 }
 

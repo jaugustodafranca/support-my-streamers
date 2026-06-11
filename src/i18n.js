@@ -29,6 +29,8 @@ const MESSAGES = {
         ? `rotacionando ${shown} de ${total} · troca a cada ${min} min`
         : `assistindo ${shown} de ${total} · sem trocar`,
     status_paused: (n) => `pausado · ${n} na lista`,
+    next_rotation: (time) => `próxima troca em ${time}`,
+    next_rotation_soon: 'próxima troca em breve',
     no_live_selected: 'Nenhum canal selecionado está ao vivo agora.',
 
     opt_tagline: 'configurações',
@@ -48,6 +50,7 @@ const MESSAGES = {
     save: 'Salvar',
     saved: 'Salvo!',
     minutes_unit: 'min',
+    powered_by: 'powered by',
   },
   en: {
     hero_sub: 'Support the streamers you follow by keeping their live running while you do other things.',
@@ -74,6 +77,8 @@ const MESSAGES = {
         ? `rotating ${shown} of ${total} · switches every ${min} min`
         : `watching ${shown} of ${total} · no switching`,
     status_paused: (n) => `paused · ${n} in the list`,
+    next_rotation: (time) => `next switch in ${time}`,
+    next_rotation_soon: 'next switch soon',
     no_live_selected: 'None of the selected channels are live right now.',
 
     opt_tagline: 'settings',
@@ -93,6 +98,7 @@ const MESSAGES = {
     save: 'Save',
     saved: 'Saved!',
     minutes_unit: 'min',
+    powered_by: 'powered by',
   },
 };
 
@@ -107,4 +113,16 @@ export function t(lang, key, ...args) {
 export function formatInterval(lang, minutes) {
   if (!minutes) return t(lang, 'time_never');
   return `${minutes} ${t(lang, 'minutes_unit')}`;
+}
+
+/** Remaining time as m:ss or h:mm:ss. */
+export function formatCountdown(ms) {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
