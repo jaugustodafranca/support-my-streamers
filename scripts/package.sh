@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Empacota a extensão para upload na Chrome Web Store.
+# Packages the extension for upload to the Chrome Web Store.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 node scripts/inject-secrets.mjs
@@ -8,4 +8,4 @@ OUT="build/support-my-streamers-$VERSION.zip"
 mkdir -p build
 rm -f "$OUT"
 zip -rq "$OUT" manifest.json src icons -x "*.DS_Store"
-echo "Gerado: $OUT"
+echo "Generated: $OUT"

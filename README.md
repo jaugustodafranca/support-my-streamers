@@ -11,6 +11,9 @@
   <img src="https://img.shields.io/badge/Twitch-Helix_API-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="Twitch API" />
   <img src="https://img.shields.io/badge/UI-PT%20%2F%20EN-7c3aed?style=for-the-badge" alt="PT / EN" />
   <img src="https://img.shields.io/badge/Privacy-no_backend-22c55e?style=for-the-badge" alt="No backend" />
+  <br />
+  <a href="https://github.com/jaugustodafranca/support-my-streamer/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/jaugustodafranca/support-my-streamer/ci.yml?style=for-the-badge&label=tests" alt="CI status" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="MIT license" /></a>
 </p>
 
 <p align="center">
@@ -90,7 +93,7 @@ Details: raid/offline rules, audio, sync cycle → **[how-it-works.md](how-it-wo
 | | |
 |---|---|
 | **Chrome Web Store** | Install when published |
-| **Unpacked (dev)** | `chrome://extensions` → Developer mode → Load unpacked → this folder |
+| **Unpacked (dev)** | `npm install && npm run secrets:inject`, then `chrome://extensions` → Developer mode → Load unpacked → this folder |
 
 End users only click **Connect with Twitch** — no Client ID setup.
 
@@ -145,10 +148,18 @@ AGENTS.md           AI assistant guide
 
 </details>
 
+## Contributing
+
+Issues and PRs are welcome! Read **[CONTRIBUTING.md](CONTRIBUTING.md)** first — quick setup, conventions (English-only code, Conventional Commits), and architecture boundaries in [AGENTS.md](AGENTS.md).
+
 ## Ethics & privacy
 
-Personal lurking for channels you already follow — not viewbotting. No analytics, no our servers.  
+Personal lurking for channels you already follow — not viewbotting. No analytics, no servers of ours.  
 [Privacy policy](PRIVACY.md) · [Design notes](docs/superpowers/specs/2026-06-10-twitch-lurker-extension-design.md)
+
+## License
+
+[MIT](LICENSE)
 
 ## Store assets
 

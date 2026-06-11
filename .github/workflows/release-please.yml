@@ -1,9 +1,9 @@
-name: Release & Publicar
+name: Release & Publish
 
-# A cada push na main:
-#  - release-please lê os commits (Conventional Commits) e mantém um "Release PR"
-#    com a próxima versão (patch/minor/major) decidida pelas mensagens.
-#  - Quando você MERGEIA esse PR, um release é criado e a extensão é publicada.
+# On every push to main:
+#  - release-please reads the commits (Conventional Commits) and maintains a
+#    "Release PR" with the next version (patch/minor/major) decided by the messages.
+#  - When you MERGE that PR, a release is created and the extension is published.
 on:
   push:
     branches: [main]
@@ -20,9 +20,9 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4
 
-      # Os passos abaixo só rodam quando um release foi criado de fato
-      # (isto é, quando o Release PR foi mergeado).
-      - name: Checkout (versão já bumpada)
+      # The steps below only run when a release was actually created
+      # (i.e. when the Release PR was merged).
+      - name: Checkout (version already bumped)
         if: ${{ steps.release.outputs.release_created }}
         uses: actions/checkout@v4
 
@@ -32,11 +32,11 @@ jobs:
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
         run: node scripts/inject-secrets.mjs
 
-      - name: Empacotar extensão
+      - name: Package extension
         if: ${{ steps.release.outputs.release_created }}
         run: zip -r extension.zip manifest.json src icons -x "*.DS_Store"
 
-      - name: Upload + publicar (Chrome Web Store)
+      - name: Upload + publish (Chrome Web Store)
         if: ${{ steps.release.outputs.release_created }}
         uses: mnao305/chrome-extension-upload@v5.0.0
         with:

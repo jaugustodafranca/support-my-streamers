@@ -171,7 +171,7 @@ This will power a popup report (â€œhow many cycles each streamer was supportedâ€
 npm test
 ```
 
-Pure logic coverage: rotation, auth, API, storage, i18n, tab sync (**46** tests).
+Pure logic coverage: rotation, auth, API, storage, i18n, tab sync (**48** tests).
 `background.js` and `twitchPlayer.js` rely on manual smoke tests in Chrome.
 
 ---

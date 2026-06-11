@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Extensão Chrome que rotaciona entre streamers que você segue na Twitch.",
+  "description": "Chrome extension that rotates between Twitch streamers you follow, lurking a few at a time.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaugustodafranca/support-my-streamer.git"
+  },
   "scripts": {
     "secrets:inject": "node scripts/inject-secrets.mjs",
     "pretest": "node scripts/inject-secrets.mjs",
