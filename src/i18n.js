@@ -3,37 +3,54 @@
 
 export const LANGS = ['pt', 'en'];
 
+/** Join streamer display names for status line (e.g. "Gaules e Cogu"). */
+export function formatPlayingNames(lang, names) {
+  const list = names?.filter(Boolean) ?? [];
+  if (!list.length) return '…';
+  const conj = lang === 'en' ? ' and ' : ' e ';
+  if (list.length === 1) return list[0];
+  if (list.length === 2) return `${list[0]}${conj}${list[1]}`;
+  return `${list.slice(0, -1).join(', ')}${conj}${list[list.length - 1]}`;
+}
+
 const MESSAGES = {
   pt: {
     hero_sub: 'Apoie quem você acompanha deixando a live rolando enquanto faz outras coisas.',
     connect: 'Conectar com a Twitch',
-    hi: 'olá,',
-    logout: 'sair',
+    hi: 'Olá,',
+    logout: 'Sair',
     start: 'Iniciar',
     resume: 'Retomar',
     pause: 'Pausar',
     stop: 'Parar',
-    options: 'opções',
+    options: 'Opções',
     options_aria: 'Opções',
     lang_aria: 'Idioma',
     loading: 'Carregando…',
+    loading_auth: 'Conectando com a Twitch…',
+    loading_channels: 'Buscando quem está ao vivo…',
     live_fallback: 'Ao vivo',
     popup_error: 'Algo deu errado. Tente reabrir o popup.',
+    dev_client_id_note: 'Sem Client-ID configurado. Copie .env.example para .env e defina TWITCH_CLIENT_ID.',
     save_error: 'Não foi possível salvar. Tente de novo.',
-    live_now: 'ao vivo agora',
+    live_now: 'Ao vivo agora',
     empty_title: 'Ninguém ao vivo agora',
     empty_sub: 'Quando alguém que você segue abrir a live, aparece aqui pra você apoiar.',
     selected: (n) => `${n} selecionado${n === 1 ? '' : 's'}`,
-    status_playing: (shown, total, min) =>
-      min
-        ? `rotacionando ${shown} de ${total} · troca a cada ${min} min`
-        : `assistindo ${shown} de ${total} · sem trocar`,
-    status_paused: (n) => `pausado · ${n} na lista`,
-    next_rotation: (time) => `próxima troca em ${time}`,
-    next_rotation_soon: 'próxima troca em breve',
+    status_playing: (names, min) => {
+      const list = formatPlayingNames('pt', names);
+      return min ? `Reproduzindo ${list} por ${min} min.` : `Reproduzindo ${list}.`;
+    },
+    status_paused: (n) => `Pausado · ${n} na lista`,
+    next_rotation: (time) => `Próxima troca em ${time}`,
+    next_rotation_soon: 'Próxima troca em breve',
+    cycle_bar_label: 'Próxima troca',
+    cycle_bar_check: 'Próximo ciclo',
+    cycle_bar_aria: 'Tempo até a próxima troca',
+    cycle_bar_infinite_aria: 'Sem troca automática de streamers',
     no_live_selected: 'Nenhum canal selecionado está ao vivo agora.',
 
-    opt_tagline: 'configurações',
+    opt_tagline: 'Configurações',
     about_title: 'O que a extensão faz',
     about_text:
       'Conecta na sua conta da Twitch, mostra quem você segue que está ao vivo e mantém alguns abertos em rotação — pra você apoiar vários streamers sem ficar trocando na mão.',
@@ -41,7 +58,7 @@ const MESSAGES = {
     lang_hint: 'Idioma da interface da extensão.',
     time_label: 'Tempo de rotação',
     time_hint: 'De quanto em quanto tempo a extensão troca os streamers abertos.',
-    time_never: 'não trocar',
+    time_never: 'Não trocar',
     audio_label: 'Áudio',
     audio_hint:
       '"Mudo" silencia a aba no navegador; o player da Twitch continua com volume alto pra contar como viewer.',
@@ -55,33 +72,40 @@ const MESSAGES = {
   en: {
     hero_sub: 'Support the streamers you follow by keeping their live running while you do other things.',
     connect: 'Connect with Twitch',
-    hi: 'hi,',
-    logout: 'log out',
+    hi: 'Hi,',
+    logout: 'Log out',
     start: 'Start',
     resume: 'Resume',
     pause: 'Pause',
     stop: 'Stop',
-    options: 'options',
+    options: 'Options',
     options_aria: 'Options',
     lang_aria: 'Language',
     loading: 'Loading…',
+    loading_auth: 'Connecting with Twitch…',
+    loading_channels: 'Fetching live channels…',
     live_fallback: 'Live',
     popup_error: 'Something went wrong. Try reopening the popup.',
+    dev_client_id_note: 'No Client-ID configured. Copy .env.example to .env and set TWITCH_CLIENT_ID.',
     save_error: 'Could not save. Try again.',
-    live_now: 'live now',
+    live_now: 'Live now',
     empty_title: 'No one live right now',
     empty_sub: 'When someone you follow goes live, they show up here for you to support.',
     selected: (n) => `${n} selected`,
-    status_playing: (shown, total, min) =>
-      min
-        ? `rotating ${shown} of ${total} · switches every ${min} min`
-        : `watching ${shown} of ${total} · no switching`,
-    status_paused: (n) => `paused · ${n} in the list`,
-    next_rotation: (time) => `next switch in ${time}`,
-    next_rotation_soon: 'next switch soon',
+    status_playing: (names, min) => {
+      const list = formatPlayingNames('en', names);
+      return min ? `Playing ${list} for ${min} min.` : `Playing ${list}.`;
+    },
+    status_paused: (n) => `Paused · ${n} in the list`,
+    next_rotation: (time) => `Next switch in ${time}`,
+    next_rotation_soon: 'Next switch soon',
+    cycle_bar_label: 'Next switch',
+    cycle_bar_check: 'Next cycle',
+    cycle_bar_aria: 'Time until next switch',
+    cycle_bar_infinite_aria: 'No automatic streamer switching',
     no_live_selected: 'None of the selected channels are live right now.',
 
-    opt_tagline: 'settings',
+    opt_tagline: 'Settings',
     about_title: 'What this extension does',
     about_text:
       'Connects to your Twitch account, shows which channels you follow are live, and keeps a few open on rotation — so you support several streamers without switching by hand.',
@@ -89,7 +113,7 @@ const MESSAGES = {
     lang_hint: 'Language of the extension interface.',
     time_label: 'Rotation time',
     time_hint: 'How often the extension swaps the open streamers.',
-    time_never: 'never switch',
+    time_never: 'Never switch',
     audio_label: 'Audio',
     audio_hint:
       '"Muted" silences the browser tab; the Twitch player stays at full volume so you count as a viewer.',

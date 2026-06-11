@@ -36,6 +36,10 @@ describe('parseAuthRedirect', () => {
   it('throws when access_token is missing', () => {
     expect(() => parseAuthRedirect('https://x.chromiumapp.org/')).toThrow();
   });
+
+  it('throws when redirect URL is missing', () => {
+    expect(() => parseAuthRedirect(undefined)).toThrow(/cancelled|redirect/i);
+  });
 });
 
 describe('isAuthExpired', () => {

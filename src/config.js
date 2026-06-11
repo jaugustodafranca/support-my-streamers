@@ -1,10 +1,9 @@
 // Application constants.
 //
-// CLIENT_ID is the app registered at dev.twitch.tv/console/apps. It is embedded
-// on purpose — Client-ID is public. End users only click "Connect with Twitch".
-//
-// App "support-my-streamers" registered at dev.twitch.tv.
-export const CLIENT_ID = '4zyirev8jnklp5qy6wje4wo2mijjxn';
+// CLIENT_ID lives in config.secrets.js (generated from .env — see .env.example).
+// Still ends up in the published zip; keeping it out of git only obscures the repo.
+
+export { CLIENT_ID } from './config.secrets.js';
 
 export const SCOPES = ['user:read:follows'];
 export const HELIX_BASE = 'https://api.twitch.tv/helix';
@@ -27,7 +26,7 @@ export const DEFAULT_SETTINGS = {
 };
 
 export const DEFAULT_ROTATION = {
-  channels: [], // logins selecionados, em ordem
-  cursor: 0,
+  channels: [], // user-selected logins, in list order
+  queueOrder: [], // FIFO: shuffled once at play start, then strict queue order
   status: 'stopped', // 'stopped' | 'playing' | 'paused'
 };

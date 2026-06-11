@@ -1,4 +1,4 @@
-// Twitch OAuth implicit grant. Pure helpers are testable; launchTwitchAuth uses chrome.identity.
+// Twitch OAuth implicit grant — pure helpers only (chrome.identity lives in background.js).
 
 import { TWITCH_AUTH_BASE, SCOPES } from './config.js';
 
@@ -14,6 +14,11 @@ export function buildAuthUrl({ clientId, redirectUri, scopes = SCOPES, state }) 
 }
 
 export function parseAuthRedirect(redirectUrl) {
+  if (!redirectUrl) {
+    throw new Error(
+      'Authentication was cancelled or the redirect URL is missing. If this keeps happening after reinstalling, add the extension Redirect URL in the Twitch Developer Console.',
+    );
+  }
   const fragment = redirectUrl.includes('#') ? redirectUrl.split('#')[1] : '';
   const params = new URLSearchParams(fragment);
   const accessToken = params.get('access_token');
@@ -33,11 +38,4 @@ export function parseAuthRedirect(redirectUrl) {
 
 export function isAuthExpired(auth) {
   return Boolean(auth?.expiresAt && Date.now() >= auth.expiresAt);
-}
-
-export async function launchTwitchAuth(clientId) {
-  const redirectUri = chrome.identity.getRedirectURL();
-  const url = buildAuthUrl({ clientId, redirectUri });
-  const redirect = await chrome.identity.launchWebAuthFlow({ url, interactive: true });
-  return parseAuthRedirect(redirect);
 }

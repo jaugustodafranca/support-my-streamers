@@ -45,12 +45,16 @@ describe('settings', () => {
 
 describe('rotation', () => {
   it('defaults to stopped and empty channels', async () => {
-    expect(await getRotation(fakeArea())).toEqual({ channels: [], cursor: 0, status: 'stopped' });
+    expect(await getRotation(fakeArea())).toEqual({
+      channels: [],
+      queueOrder: [],
+      status: 'stopped',
+    });
   });
 
   it('persists selected channels', async () => {
     const area = fakeArea();
-    await setRotation({ channels: ['a', 'b'], cursor: 0, status: 'playing' }, area);
+    await setRotation({ channels: ['a', 'b'], status: 'playing' }, area);
     expect((await getRotation(area)).channels).toEqual(['a', 'b']);
   });
 });

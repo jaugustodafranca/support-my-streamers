@@ -1,7 +1,7 @@
 // Content script injected on rotation tabs. Keeps the Twitch player at full
 // volume and playing so the stream counts as a viewer, while Chrome tab mute
 // (set by the background worker) silences output for the user. Also dismisses
-// mature-content and content-classification overlays (e.g. "Concordo").
+// mature-content and content-classification overlays.
 
 const MAX_VOLUME = 1;
 const RETRY_MS = 1000;

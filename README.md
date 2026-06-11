@@ -1,86 +1,117 @@
-# Support My Streamers
+<p align="center">
+  <img src="icons/icon128.png" alt="Support My Streamers" width="96" height="96" />
+</p>
 
-Extensão de Chrome que autentica na Twitch, lista os streamers que você segue
-que estão **ao vivo** e roda um "lurking" pessoal: você escolhe canais e a
-extensão abre 2 por vez num grupo de abas, rotacionando a cada N minutos.
+<h1 align="center">Support My Streamers</h1>
 
-É uma ferramenta de lurking pessoal — um humano real acompanhando canais que ele
-escolheu. Não inflama audiência de terceiros, não direciona viewers por servidor
-e não simula chat.
+<p align="center">
+  <strong>Lurk the Twitch channels you follow — two at a time, on autopilot.</strong>
+</p>
 
-**AI assistants:** read [AGENTS.md](AGENTS.md) ([agents.md](https://agents.md/) format) and [coding standards](.cursor/rules/coding-standards.mdc). **Code in English**; UI copy in `src/i18n.js` only.
+<p align="center">
+  Chrome extension · Manifest V3 · PT / EN · No backend · Official Twitch API
+</p>
 
-## Estrutura
+---
+
+You pick who to support. The extension opens **up to 2 live streams** in a tab group and **rotates** through your list on a timer — so you can keep working while still showing up for the streamers you care about.
+
+Personal lurking only: a real viewer, channels you chose, no chat bots, no server-directed audiences.
+
+## Features
+
+| | |
+|---|---|
+| **Live follows** | See who you follow that is live right now — game and viewer count |
+| **Your list** | Toggle channels on/off before you start |
+| **FIFO rotation** | Shuffled once, then fair queue; skips offline channels automatically |
+| **Tab group** | Streams open in a dedicated **Support My Streamers** group |
+| **Flexible timing** | 5–120 min, or ∞ (health check only, no switching) |
+| **Audio** | Mute the browser tab; player volume stays high so you count as a viewer |
+| **Privacy** | No analytics, no our servers — [privacy policy](PRIVACY.md) |
+
+## How it works
 
 ```
-manifest.json          Manifest V3
-src/
-  config.js            Constantes (sem segredos)
-  rotation.js          Lógica pura da rotação (round-robin)
-  twitchApi.js         Wrapper da API Helix
-  auth.js              OAuth da Twitch (implicit grant)
-  storage.js           Wrappers de chrome.storage.local
-  background.js        Service worker (orquestra tudo)
-  twitchPlayer.js      Content script (volume, overlays na Twitch)
-  popup/               UI de ação rápida (play/pause/seleção)
-  options/             Configurações + Client-ID
-test/                  Testes (Vitest) da lógica pura
-AGENTS.md              Instruções para IAs (arquitetura, invariantes)
-how-it-works.md        Tab cycle, audio, raid rules (English)
+Connect Twitch  →  Pick live channels  →  Start
+        ↓
+   2 tabs open in a group  →  rotate every N minutes  →  Stop closes the group
 ```
 
-## Behavior
+1. **Connect** with Twitch (scope: `user:read:follows` only).
+2. **Select** streamers from the live list in the popup.
+3. **Start** — tabs open muted (by default); a red dot on the icon means rotation is active.
+4. **Stop** — closes the group and clears the queue.
 
-Sync cycle, offline/raid rules, audio, and player details:
-[how-it-works.md](how-it-works.md).
+Raid and offline rules, audio details, and the sync cycle: **[how-it-works.md](how-it-works.md)**.
 
-## Setup do desenvolvedor (uma vez, só você)
+## Quick start (end user)
 
-O usuário final NÃO faz nada disso — ele só clica em "Conectar com a Twitch".
-Estes passos são pra você, dono do projeto, deixar a extensão pronta.
+**Chrome Web Store** — install when published.
 
-### 1. Criar UM app na Twitch (o app do projeto)
+**Load unpacked (development):**
 
-1. Acesse <https://dev.twitch.tv/console/apps> → **Register Your Application**.
-2. **Name**: "Support My Streamers".
-3. **Category**: Application Integration.
-4. **OAuth Redirect URLs**: você preenche no passo 3.
-5. Salve e copie o **Client ID**.
+1. Clone the repo and set up secrets (developers only — see below).
+2. `chrome://extensions` → **Developer mode** → **Load unpacked** → this folder.
+3. Open the popup → **Connect with Twitch** → select channels → **Start**.
 
-### 2. Embutir o Client-ID
+## Development
 
-Cole o Client-ID copiado em `src/config.js`:
+### Prerequisites
 
-```js
-export const CLIENT_ID = 'seu_client_id_aqui';
-```
+- Node.js 18+
+- A [Twitch Developer](https://dev.twitch.tv/console/apps) app (Application Integration)
 
-Client-ID é público por natureza — pode ir versionado/commitado sem risco.
-
-### 3. Carregar a extensão e registrar o Redirect URL
-
-1. `chrome://extensions` → ative o **Modo do desenvolvedor** → **Carregar sem
-   compactação** → selecione a pasta do projeto. **Não mova a pasta depois.**
-2. Anote o **ID da extensão** mostrado no card. O Redirect URL é
-   `https://<id-da-extensão>.chromiumapp.org/`.
-3. Volte ao app na Twitch (passo 1), edite e adicione esse URL em
-   **OAuth Redirect URLs**. Salve.
-   - A Twitch aceita vários redirect URLs — ao publicar, adicione também o da
-     versão publicada (o ID muda na loja).
-
-### 4. Testar (como usuário final faria)
-
-1. Clique no ícone → **Conectar com a Twitch** e autorize.
-2. Marque os canais ao vivo que quer rotacionar.
-3. **Iniciar** abre o grupo "Rotacionando" com 2 abas; **Pausar** congela;
-   **Parar** fecha o grupo.
-
-## Desenvolvimento
+### One-time setup
 
 ```bash
 npm install
-npm test       # roda os testes da lógica pura
+cp .env.example .env
+# Set TWITCH_CLIENT_ID=... in .env
+npm run secrets:inject
 ```
 
-Os módulos com efeito colateral do Chrome (`background.js`, popup, opções) são
-validados por smoke test manual no navegador.
+Register the extension redirect URL in the Twitch app:
+
+`https://<extension-id>.chromiumapp.org/`
+
+(Extension ID appears on `chrome://extensions` after load unpacked.)
+
+For **CI releases**, add GitHub secret `TWITCH_CLIENT_ID`. The workflow injects it before packaging.
+
+### Commands
+
+```bash
+npm test              # Vitest — pure logic (48 tests)
+npm run build         # zip → build/support-my-streamers-<version>.zip
+npm run icons:active  # regenerate toolbar icons with live dot
+npm run secrets:inject
+```
+
+### Project layout
+
+```
+src/
+  background.js     Service worker (Chrome APIs only)
+  rotation.js       FIFO queue — pure, tested
+  twitchApi.js      Helix wrapper
+  popup/            Start / stop, channel list, progress bar
+  options/          Interval, audio, language
+test/
+AGENTS.md           AI assistant guide
+how-it-works.md     Behavior spec
+```
+
+**AI assistants:** read [AGENTS.md](AGENTS.md) and [coding standards](.cursor/rules/coding-standards.mdc). Code in English; UI strings in `src/i18n.js`.
+
+## Ethics
+
+Built for **personal** support of channels you already follow. Not viewbotting, not inflating metrics for strangers, not simulating engagement. See [how-it-works.md](how-it-works.md) and the [design notes](docs/superpowers/specs/2026-06-10-twitch-lurker-extension-design.md).
+
+## License
+
+Private project — check with the maintainer before redistributing.
+
+<p align="center">
+  <sub>powered by <a href="https://zaintech.com.br">zaintech.com.br</a></sub>
+</p>

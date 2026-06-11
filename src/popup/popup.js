@@ -1,7 +1,7 @@
 import { t, formatCountdown } from '../i18n.js';
-import { needsRotation } from '../rotation.js';
-import { SLOTS } from '../config.js';
-import { getSettings } from '../storage.js';
+import { needsRotation, cycleProgress } from '../rotation.js';
+import { SLOTS, HEALTH_CHECK_MINUTES } from '../config.js';
+import { getSettings, getAuth } from '../storage.js';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -40,6 +40,12 @@ function el(html) {
   return t.content.firstElementChild;
 }
 
+function appendHtml(parent, html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  parent.append(...t.content.children);
+}
+
 function showToast(message) {
   toast.textContent = message;
   toast.hidden = false;
@@ -59,12 +65,53 @@ const isRotating = (state) => {
   return needsRotation(count, SLOTS) && settings.intervalMinutes > 0;
 };
 
-const countdownLabel = (state) => {
+const cyclePeriodMs = (settings) => {
+  const minutes =
+    settings.intervalMinutes > 0 ? settings.intervalMinutes : HEALTH_CHECK_MINUTES;
+  return minutes * 60_000;
+};
+
+const isInfiniteInterval = (settings) => settings.intervalMinutes === 0;
+
+const cycleBarLabel = (state) => {
   const lang = state.settings?.lang || 'pt';
-  if (!state.nextCycleAt) return t(lang, 'next_rotation_soon');
-  const remaining = state.nextCycleAt - Date.now();
-  if (remaining <= 0) return t(lang, 'next_rotation_soon');
-  return t(lang, 'next_rotation', formatCountdown(remaining));
+  if (isInfiniteInterval(state.settings)) return t(lang, 'time_never');
+  if (isRotating(state)) return t(lang, 'cycle_bar_label');
+  return t(lang, 'cycle_bar_check');
+};
+
+const cycleTimeLabel = (state, remainingMs) => {
+  if (isInfiniteInterval(state.settings)) return '∞';
+  if (!state.nextCycleAt || remainingMs <= 0) return '…';
+  return formatCountdown(remainingMs);
+};
+
+const cycleBarAria = (state) => {
+  const lang = state.settings?.lang || 'pt';
+  return isInfiniteInterval(state.settings)
+    ? t(lang, 'cycle_bar_infinite_aria')
+    : t(lang, 'cycle_bar_aria');
+};
+
+const cycleBarHtml = (state) => {
+  const periodMs = cyclePeriodMs(state.settings);
+  const { progress, remainingMs } = cycleProgress(state.nextCycleAt, periodMs);
+  const pct = Math.round(progress * 100);
+  const infinite = isInfiniteInterval(state.settings);
+  const timeLabel = cycleTimeLabel(state, remainingMs);
+  const timeClass = infinite
+    ? 'cycle-bar__time cycle-bar__time--infinite'
+    : 'cycle-bar__time';
+
+  return `<div class="cycle-bar${infinite ? ' cycle-bar--infinite' : ''}" data-cycle-bar>
+    <div class="cycle-bar__track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(cycleBarAria(state))}">
+      <div class="cycle-bar__fill" data-cycle-fill style="width:${pct}%"></div>
+    </div>
+    <div class="cycle-bar__meta">
+      <span class="cycle-bar__label">${escapeHtml(cycleBarLabel(state))}</span>
+      <span class="${timeClass}" data-cycle-time>${escapeHtml(timeLabel)}</span>
+    </div>
+  </div>`;
 };
 
 const stopCountdown = () => {
@@ -85,30 +132,51 @@ const refreshCountdownState = async () => {
   }
 };
 
-const tickCountdown = () => {
-  const el = document.querySelector('[data-countdown]');
-  if (!el || !countdownState?.nextCycleAt) return;
-  const remaining = countdownState.nextCycleAt - Date.now();
-  el.textContent = countdownLabel(countdownState);
-  if (remaining <= 0) refreshCountdownState();
+const updateCycleBar = () => {
+  const root = document.querySelector('[data-cycle-bar]');
+  if (!root || !countdownState) return;
+
+  const periodMs = cyclePeriodMs(countdownState.settings);
+  const { progress, remainingMs } = cycleProgress(
+    countdownState.nextCycleAt,
+    periodMs,
+  );
+  const pct = Math.round(progress * 100);
+  const fill = root.querySelector('[data-cycle-fill]');
+  const timeEl = root.querySelector('[data-cycle-time]');
+  const track = root.querySelector('.cycle-bar__track');
+
+  if (fill) fill.style.width = `${pct}%`;
+  if (track) track.setAttribute('aria-valuenow', String(pct));
+  if (timeEl) timeEl.textContent = cycleTimeLabel(countdownState, remainingMs);
+
+  if (countdownState.nextCycleAt && remainingMs <= 0) refreshCountdownState();
 };
 
-const startCountdown = (state) => {
+const startCycleBar = (state) => {
   stopCountdown();
-  if (!isRotating(state) || !state.nextCycleAt) return;
+  if (state.rotation?.status !== 'playing') return;
   countdownState = state;
-  tickCountdown();
-  countdownTimer = setInterval(tickCountdown, 1000);
+  updateCycleBar();
+  countdownTimer = setInterval(updateCycleBar, 1000);
+};
+
+const displayNameForLogin = (login, live) => {
+  const channel = live.find((s) => s.login === login);
+  return channel?.displayName || login;
 };
 
 function statusText(state) {
   const { rotation, settings, live } = state;
   const lang = settings.lang || 'pt';
-  const selectedLive = selectedLiveCount(rotation, live);
   if (rotation.status === 'playing') {
-    const rotating = isRotating(state);
-    const interval = rotating ? settings.intervalMinutes : 0;
-    return t(lang, 'status_playing', Math.min(SLOTS, selectedLive), selectedLive, interval);
+    const logins =
+      state.playingLogins?.filter(Boolean).length
+        ? state.playingLogins
+        : rotation.queueOrder?.slice(0, SLOTS) ?? [];
+    const names = logins.map((login) => displayNameForLogin(login, live));
+    const interval = isRotating(state) ? settings.intervalMinutes : 0;
+    return t(lang, 'status_playing', names, interval);
   }
   if (rotation.status === 'paused') {
     return t(lang, 'status_paused', rotation.channels.length);
@@ -135,22 +203,26 @@ const topbar = (lang) =>
     </div>
   </header>`;
 
-const renderLoading = (lang) => {
+const renderLoading = (lang, messageKey = 'loading') => {
   app.innerHTML = '';
   setDocumentLang(lang);
-  app.appendChild(
-    el(`${topbar(lang)}
+  appendHtml(
+    app,
+    `${topbar(lang)}
       <div class="loading-body">
-        <p class="loading-text">
-          <span class="loading-dot" aria-hidden="true"></span>
-          ${escapeHtml(t(lang, 'loading'))}
+        <p class="loading-text" role="status" aria-live="polite">
+          <span class="loading-indicator" aria-hidden="true">
+            <span class="loading-dot"></span>
+          </span>
+          ${escapeHtml(t(lang, messageKey))}
         </p>
-      </div>`),
+      </div>`,
   );
 };
 
 function render(state) {
   stopCountdown();
+  window.scrollTo(0, 0);
   app.innerHTML = '';
   const lang = state?.settings?.lang || 'pt';
   setDocumentLang(lang);
@@ -168,7 +240,7 @@ function render(state) {
     app.appendChild(
       el(`<div class="dev-note">
         <h1 class="wordmark" style="font-size:22px">support<em>my</em>streamers</h1>
-        <p style="color:var(--text-faint);font-size:13px;line-height:1.5">Sem Client-ID configurado. Defina <code>CLIENT_ID</code> em <code>src/config.js</code>.</p>
+        <p style="color:var(--text-faint);font-size:13px;line-height:1.5">${escapeHtml(t(lang, 'dev_client_id_note'))}</p>
       </div>`),
     );
     return;
@@ -195,20 +267,18 @@ function render(state) {
   );
 
   const playLabel = rotation.status === 'paused' ? t(lang, 'resume') : t(lang, 'start');
-  const showCountdown = isRotating(state) && state.nextCycleAt;
+  const dockControls = playing
+    ? `<button class="play-btn wide" data-action="stop">⏹ ${escapeHtml(t(lang, 'stop'))}</button>`
+    : `<button class="play-btn wide" data-action="play">▶ ${escapeHtml(playLabel)}</button>`;
+
   app.appendChild(
-    el(`<div class="dock">
-      ${
-        playing
-          ? `<button class="play-btn playing" data-action="pause">⏸ ${escapeHtml(t(lang, 'pause'))}</button>`
-          : `<button class="play-btn" data-action="play">▶ ${escapeHtml(playLabel)}</button>`
-      }
-      <button class="ghost-btn" data-action="stop" ${rotation.status === 'stopped' ? 'disabled' : ''}>${escapeHtml(t(lang, 'stop'))}</button>
+    el(`<div class="dock dock--single">
+      ${dockControls}
       <div class="ticker">${playing ? '<span class="pulse"></span>' : ''}${escapeHtml(statusText(state))}</div>
-      ${showCountdown ? `<p class="countdown" data-countdown>${escapeHtml(countdownLabel(state))}</p>` : ''}
+      ${playing ? cycleBarHtml(state) : ''}
     </div>`),
   );
-  startCountdown(state);
+  startCycleBar(state);
 
   if (state.error) app.appendChild(el(`<p class="error-line">${escapeHtml(state.error)}</p>`));
 
@@ -223,7 +293,8 @@ function render(state) {
     return;
   }
 
-  app.appendChild(
+  const main = el('<div class="popup-main"></div>');
+  main.appendChild(
     el(`<div class="section-head">
       <span class="label"><span class="live-dot"></span>${escapeHtml(t(lang, 'live_now'))}</span>
       <span class="count">${live.length}</span>
@@ -246,7 +317,8 @@ function render(state) {
       </li>`),
     );
   });
-  app.appendChild(list);
+  main.appendChild(list);
+  app.appendChild(main);
   listRevealed = true;
 }
 
@@ -254,7 +326,6 @@ const ACTION_TO_MSG = {
   login: 'LOGIN',
   logout: 'LOGOUT',
   play: 'PLAY',
-  pause: 'PAUSE',
   stop: 'STOP',
 };
 
@@ -268,6 +339,13 @@ app.addEventListener('click', async (e) => {
     return;
   }
 
+  const settings = await getSettings();
+  const lang = settings.lang || 'pt';
+
+  if (action === 'login') {
+    renderLoading(lang, 'loading_auth');
+  }
+
   trigger.disabled = true;
   try {
     const state = await send({ type: ACTION_TO_MSG[action] });
@@ -275,6 +353,14 @@ app.addEventListener('click', async (e) => {
     render(state);
   } catch (err) {
     showToast(String(err.message || err));
+    try {
+      const state = await send({ type: 'GET_STATE' });
+      render(state);
+    } catch {
+      render({ settings: { lang: 'pt' }, clientIdSet: true, authed: false });
+    }
+  } finally {
+    trigger.disabled = false;
   }
 });
 
@@ -287,16 +373,33 @@ app.addEventListener('change', async (e) => {
 
   const login = e.target.dataset?.toggle;
   if (!login) return;
-  const state = await send({ type: 'TOGGLE_CHANNEL', login });
-  render(state);
+
+  const checkbox = e.target;
+  try {
+    const state = await send({ type: 'TOGGLE_CHANNEL', login });
+    if (state?.error) {
+      checkbox.checked = !checkbox.checked;
+      showToast(state.error);
+    }
+    // Keep layout stable: checkbox already reflects the toggle; no full re-render.
+  } catch (err) {
+    checkbox.checked = !checkbox.checked;
+    showToast(String(err.message || err));
+  }
 });
 
 async function init() {
   const settings = await getSettings();
   const lang = settings.lang || 'pt';
-  renderLoading(lang);
-  const state = await send({ type: 'GET_STATE' });
-  render(state);
+  const auth = await getAuth();
+  renderLoading(lang, auth ? 'loading_channels' : 'loading');
+  try {
+    const state = await send({ type: 'GET_STATE' });
+    render(state);
+  } catch (err) {
+    showToast(String(err.message || err));
+    render({ settings, clientIdSet: true, authed: false });
+  }
 }
 
 init();

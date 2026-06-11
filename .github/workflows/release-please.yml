@@ -26,6 +26,12 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         uses: actions/checkout@v4
 
+      - name: Inject Twitch Client ID
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+        run: node scripts/inject-secrets.mjs
+
       - name: Empacotar extensão
         if: ${{ steps.release.outputs.release_created }}
         run: zip -r extension.zip manifest.json src icons -x "*.DS_Store"

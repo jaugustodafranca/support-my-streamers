@@ -62,12 +62,12 @@ Manual smoke test: load unpacked at `chrome://extensions`.
 
 ```
 src/background.js     # Service worker — chrome.* only
-src/rotation.js       # Pure: round-robin, decideTabAction, parseChannelLogin
+src/rotation.js       # Pure: FIFO rotation, decideTabAction, parseChannelLogin
 src/twitchPlayer.js   # Injected content script (volume, overlays)
 src/twitchApi.js      # Helix API
-src/auth.js           # OAuth implicit grant
+src/auth.js           # OAuth helpers (flow in background.js)
 src/storage.js        # chrome.storage.local
-src/config.js         # CLIENT_ID, SLOTS, defaults
+src/config.js         # SLOTS, defaults; CLIENT_ID from generated config.secrets.js (.env)
 src/i18n.js           # UI strings (pt/en) — not chrome.i18n
 src/popup/  src/options/
 test/
