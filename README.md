@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/lockup-dark.png" alt="support my streamers" width="420" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-light.png" />
+    <source media="(prefers-color-scheme: light)" srcset="assets/lockup-dark.png" />
+    <img src="assets/lockup-dark.png" alt="support my streamers" width="420" />
+  </picture>
 </p>
 
 <p align="center">
