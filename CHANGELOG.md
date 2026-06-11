@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v0.2.0...support-my-streamers-v1.0.0) (2026-06-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* release 1.0.0 with FIFO rotation and env-based Twitch Client ID
+
+### Features
+
+* release 1.0.0 with FIFO rotation and env-based Twitch Client ID ([2ffc4fa](https://github.com/jaugustodafranca/support-my-streamers/commit/2ffc4fad02dba0837501b5326d4f5f8594330b77))
+
+
+### Bug Fixes
+
+* **ci:** point release-please manifest at last released version (0.2.0) ([fe646d7](https://github.com/jaugustodafranca/support-my-streamers/commit/fe646d7ac6d2f51cfb52b87ec43470901f515f4d))
+
 ## [0.2.0](https://github.com/jaugustodafranca/support-my-streamer/compare/support-my-streamers-v0.1.0...support-my-streamers-v0.2.0) (2026-06-11)
 
 
