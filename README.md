@@ -1,116 +1,160 @@
 <p align="center">
-  <img src="icons/icon128.png" alt="Support My Streamers" width="96" height="96" />
+  <img src="assets/lockup-dark.png" alt="support my streamers" width="420" />
 </p>
-
-<h1 align="center">Support My Streamers</h1>
 
 <p align="center">
   <strong>Lurk the Twitch channels you follow — two at a time, on autopilot.</strong>
 </p>
 
 <p align="center">
-  Chrome extension · Manifest V3 · PT / EN · No backend · Official Twitch API
+  <img src="https://img.shields.io/badge/Chrome-MV3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome MV3" />
+  <img src="https://img.shields.io/badge/Twitch-Helix_API-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="Twitch API" />
+  <img src="https://img.shields.io/badge/UI-PT%20%2F%20EN-7c3aed?style=for-the-badge" alt="PT / EN" />
+  <img src="https://img.shields.io/badge/Privacy-no_backend-22c55e?style=for-the-badge" alt="No backend" />
+</p>
+
+<p align="center">
+  <img src="assets/store/screenshot-1.png" alt="Support My Streamers popup — connect Twitch, pick live channels, start rotation" width="720" />
+</p>
+
+<p align="center">
+  <sub>Connect · pick who's live · start · the extension rotates 2 streams in a tab group</sub>
 </p>
 
 ---
 
-You pick who to support. The extension opens **up to 2 live streams** in a tab group and **rotates** through your list on a timer — so you can keep working while still showing up for the streamers you care about.
+## Why this exists
 
-Personal lurking only: a real viewer, channels you chose, no chat bots, no server-directed audiences.
+You already follow great streamers. Keeping two live tabs open and switching by hand is tedious. **Support My Streamers** does the lurking for you — channels **you** chose, a real browser session, no chat bots, no server pushing audiences.
 
-## Features
+## Highlights
 
-| | |
-|---|---|
-| **Live follows** | See who you follow that is live right now — game and viewer count |
-| **Your list** | Toggle channels on/off before you start |
-| **FIFO rotation** | Shuffled once, then fair queue; skips offline channels automatically |
-| **Tab group** | Streams open in a dedicated **Support My Streamers** group |
-| **Flexible timing** | 5–120 min, or ∞ (health check only, no switching) |
-| **Audio** | Mute the browser tab; player volume stays high so you count as a viewer |
-| **Privacy** | No analytics, no our servers — [privacy policy](PRIVACY.md) |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Live dashboard**  
+See who you follow that is live — game, viewers, toggles.
+
+**FIFO rotation**  
+Shuffled once, fair queue; offline channels skip automatically.
+
+**Tab group**  
+Streams open in a **Support My Streamers** Chrome group.
+
+</td>
+<td width="50%" valign="top">
+
+**Progress bar**  
+YouTube-style countdown until the next switch.
+
+**Active indicator**  
+Red dot on the toolbar icon while rotation runs.
+
+**Muted tabs, loud player**  
+Browser tab silent; Twitch player volume stays up.
+
+</td>
+</tr>
+</table>
+
+<p align="center">
+  <img src="icons/icon128.png" alt="idle icon" width="64" />
+  &nbsp;&nbsp;→&nbsp;&nbsp;
+  <img src="icons/icon128-active.png" alt="active icon with red dot" width="64" />
+  <br />
+  <sub>Idle · playing</sub>
+</p>
 
 ## How it works
 
+```mermaid
+flowchart LR
+  A[Connect Twitch] --> B[Pick live channels]
+  B --> C[Start]
+  C --> D[2 tabs in a group]
+  D --> E{Timer}
+  E -->|rotate| D
+  E -->|Stop| F[Close group]
 ```
-Connect Twitch  →  Pick live channels  →  Start
-        ↓
-   2 tabs open in a group  →  rotate every N minutes  →  Stop closes the group
-```
 
-1. **Connect** with Twitch (scope: `user:read:follows` only).
-2. **Select** streamers from the live list in the popup.
-3. **Start** — tabs open muted (by default); a red dot on the icon means rotation is active.
-4. **Stop** — closes the group and clears the queue.
+1. **Connect** — OAuth with scope `user:read:follows` only.  
+2. **Select** — toggle streamers in the popup.  
+3. **Start** — opens up to 2 live tabs; icon shows a red dot.  
+4. **Stop** — closes the group and ends rotation.
 
-Raid and offline rules, audio details, and the sync cycle: **[how-it-works.md](how-it-works.md)**.
+Details: raid/offline rules, audio, sync cycle → **[how-it-works.md](how-it-works.md)**
 
-## Quick start (end user)
+## Quick start
 
-**Chrome Web Store** — install when published.
+| | |
+|---|---|
+| **Chrome Web Store** | Install when published |
+| **Unpacked (dev)** | `chrome://extensions` → Developer mode → Load unpacked → this folder |
 
-**Load unpacked (development):**
-
-1. Clone the repo and set up secrets (developers only — see below).
-2. `chrome://extensions` → **Developer mode** → **Load unpacked** → this folder.
-3. Open the popup → **Connect with Twitch** → select channels → **Start**.
+End users only click **Connect with Twitch** — no Client ID setup.
 
 ## Development
 
-### Prerequisites
+<details>
+<summary><strong>One-time developer setup</strong></summary>
 
-- Node.js 18+
-- A [Twitch Developer](https://dev.twitch.tv/console/apps) app (Application Integration)
+<br />
 
-### One-time setup
+**Prerequisites:** Node.js 18+ · [Twitch Developer app](https://dev.twitch.tv/console/apps)
 
 ```bash
 npm install
 cp .env.example .env
-# Set TWITCH_CLIENT_ID=... in .env
+# TWITCH_CLIENT_ID=... in .env
 npm run secrets:inject
 ```
 
-Register the extension redirect URL in the Twitch app:
+Register redirect URL in the Twitch app:
 
 `https://<extension-id>.chromiumapp.org/`
 
-(Extension ID appears on `chrome://extensions` after load unpacked.)
-
-For **CI releases**, add GitHub secret `TWITCH_CLIENT_ID`. The workflow injects it before packaging.
-
-### Commands
+**GitHub Actions:** repository secret `TWITCH_CLIENT_ID` (CI injects before zip).  
+Chrome Web Store secrets (`CHROME_*`) stay in GitHub only — not in `.env`.
 
 ```bash
-npm test              # Vitest — pure logic (48 tests)
-npm run build         # zip → build/support-my-streamers-<version>.zip
-npm run icons:active  # regenerate toolbar icons with live dot
-npm run secrets:inject
+npm test              # 48 tests
+npm run build         # build/support-my-streamers-<version>.zip
+npm run icons:active  # regenerate active toolbar icons
 ```
 
-### Project layout
+</details>
+
+<details>
+<summary><strong>Project layout</strong></summary>
+
+<br />
 
 ```
 src/
   background.js     Service worker (Chrome APIs only)
   rotation.js       FIFO queue — pure, tested
   twitchApi.js      Helix wrapper
-  popup/            Start / stop, channel list, progress bar
+  popup/            Start / stop, channel list, cycle bar
   options/          Interval, audio, language
 test/
 AGENTS.md           AI assistant guide
-how-it-works.md     Behavior spec
 ```
 
-**AI assistants:** read [AGENTS.md](AGENTS.md) and [coding standards](.cursor/rules/coding-standards.mdc). Code in English; UI strings in `src/i18n.js`.
+**AI assistants:** [AGENTS.md](AGENTS.md) · [coding standards](.cursor/rules/coding-standards.mdc)
 
-## Ethics
+</details>
 
-Built for **personal** support of channels you already follow. Not viewbotting, not inflating metrics for strangers, not simulating engagement. See [how-it-works.md](how-it-works.md) and the [design notes](docs/superpowers/specs/2026-06-10-twitch-lurker-extension-design.md).
+## Ethics & privacy
 
-## License
+Personal lurking for channels you already follow — not viewbotting. No analytics, no our servers.  
+[Privacy policy](PRIVACY.md) · [Design notes](docs/superpowers/specs/2026-06-10-twitch-lurker-extension-design.md)
 
-Private project — check with the maintainer before redistributing.
+## Store assets
+
+<p align="center">
+  <img src="assets/store/promo-small-440x280.png" alt="Support My Streamers promo tile" width="320" />
+</p>
 
 <p align="center">
   <sub>powered by <a href="https://zaintech.com.br">zaintech.com.br</a></sub>
