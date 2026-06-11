@@ -34,3 +34,23 @@ export async function getRotation(store = area()) {
 export async function setRotation(rotation, store = area()) {
   await store.set({ rotation });
 }
+
+const DEFAULT_REVIEW_PROMPT = {
+  playStarts: 0,
+  dismissedAt: null,
+  ratedAt: null,
+};
+
+export async function getReviewPrompt(store = area()) {
+  const { reviewPrompt } = await store.get('reviewPrompt');
+  return { ...DEFAULT_REVIEW_PROMPT, ...(reviewPrompt || {}) };
+}
+
+export async function setReviewPrompt(reviewPrompt, store = area()) {
+  await store.set({ reviewPrompt });
+}
+
+export async function recordPlayStart(store = area()) {
+  const current = await getReviewPrompt(store);
+  await setReviewPrompt({ ...current, playStarts: current.playStarts + 1 }, store);
+}

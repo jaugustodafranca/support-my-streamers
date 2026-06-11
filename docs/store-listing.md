@@ -57,11 +57,13 @@ Entertainment (ou Social & Communication)
 
 - **identity**: usada para o login OAuth com a Twitch.
 - **storage**: salvar localmente o token de acesso e suas configurações.
-- **tabs**: abrir e atualizar as abas dos streams durante a rotação.
 - **tabGroups**: agrupar as abas dos streams num grupo nomeado.
 - **alarms**: agendar o timer da rotação.
+- **scripting**: injetar o script do player nas abas da Twitch (volume).
 - **host permission `https://api.twitch.tv/*`**: chamar a API oficial da Twitch
   para listar os canais seguidos que estão ao vivo.
+- **host permission `https://www.twitch.tv/*`**: abrir, atualizar e ler URLs das
+  abas de stream da Twitch durante a rotação (sem acesso ao resto do navegador).
 - **Justificativa de uso remoto de código**: nenhuma. A extensão não executa
   código remoto; todo o código está no pacote.
 

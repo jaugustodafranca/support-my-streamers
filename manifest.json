@@ -6,7 +6,6 @@
   "permissions": [
     "identity",
     "storage",
-    "tabs",
     "tabGroups",
     "alarms",
     "scripting"

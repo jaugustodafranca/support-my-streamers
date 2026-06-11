@@ -1,7 +1,8 @@
 import { t, formatCountdown } from '../i18n.js';
 import { needsRotation, cycleProgress } from '../rotation.js';
 import { SLOTS, HEALTH_CHECK_MINUTES } from '../config.js';
-import { getSettings, getAuth } from '../storage.js';
+import { getSettings, getAuth, getReviewPrompt, setReviewPrompt } from '../storage.js';
+import { storeReviewUrl } from '../reviewPrompt.js';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -203,6 +204,15 @@ const topbar = (lang) =>
     </div>
   </header>`;
 
+const reviewBanner = (lang) =>
+  `<div class="review-banner" role="region" aria-label="${escapeHtml(t(lang, 'review_aria'))}">
+    <p class="review-banner__text">${escapeHtml(t(lang, 'review_prompt'))}</p>
+    <div class="review-banner__actions">
+      <button type="button" class="review-banner__rate" data-action="review-rate">${escapeHtml(t(lang, 'review_rate'))}</button>
+      <button type="button" class="review-banner__later textlink" data-action="review-dismiss">${escapeHtml(t(lang, 'review_later'))}</button>
+    </div>
+  </div>`;
+
 const renderLoading = (lang, messageKey = 'loading') => {
   app.innerHTML = '';
   setDocumentLang(lang);
@@ -280,6 +290,10 @@ function render(state) {
   );
   startCycleBar(state);
 
+  if (state.showReviewPrompt) {
+    app.appendChild(el(reviewBanner(lang)));
+  }
+
   if (state.error) app.appendChild(el(`<p class="error-line">${escapeHtml(state.error)}</p>`));
 
   if (!live.length) {
@@ -336,6 +350,23 @@ app.addEventListener('click', async (e) => {
 
   if (action === 'options') {
     chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  if (action === 'review-dismiss') {
+    const current = await getReviewPrompt();
+    await setReviewPrompt({ ...current, dismissedAt: Date.now() });
+    const state = await send({ type: 'GET_STATE' });
+    render(state);
+    return;
+  }
+
+  if (action === 'review-rate') {
+    const current = await getReviewPrompt();
+    await setReviewPrompt({ ...current, ratedAt: Date.now() });
+    chrome.tabs.create({ url: storeReviewUrl(chrome.runtime.id) });
+    const state = await send({ type: 'GET_STATE' });
+    render(state);
     return;
   }
 

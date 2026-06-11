@@ -15,9 +15,11 @@
     "prebuild": "node scripts/inject-secrets.mjs",
     "build": "bash scripts/package.sh",
     "icons:active": "node scripts/generate-active-icons.mjs",
+    "store:assets": "node scripts/generate-store-assets.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
+    "playwright": "^1.49.1",
     "sharp": "^0.35.0",
     "vitest": "^2.1.8"
   }

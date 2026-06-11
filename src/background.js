@@ -11,6 +11,7 @@ import {
   initFifoRotation,
   tickFifoRotation,
 } from './rotation.js';
+import { shouldShowReviewPrompt } from './reviewPrompt.js';
 import * as store from './storage.js';
 
 // Internal Chrome timer — silent, no user notification.
@@ -477,6 +478,7 @@ async function start() {
     queueOrder: fifo.queueOrder,
     status: 'playing',
   });
+  await store.recordPlayStart();
   await scheduleCycle();
   await syncActionIcon();
 }
@@ -642,7 +644,15 @@ async function getState() {
   const nextCycleAt = rotation.status === 'playing' ? await getNextCycleAt() : null;
   const playingLogins =
     rotation.status === 'playing' ? await getPlayingLogins() : [];
-  const base = { clientIdSet: !!CLIENT_ID, settings, rotation, nextCycleAt, playingLogins };
+  const reviewPrompt = await store.getReviewPrompt();
+  const base = {
+    clientIdSet: !!CLIENT_ID,
+    settings,
+    rotation,
+    nextCycleAt,
+    playingLogins,
+    showReviewPrompt: shouldShowReviewPrompt(reviewPrompt),
+  };
 
   if (!auth || !CLIENT_ID) {
     return { ...base, authed: false, user: null, live: [] };

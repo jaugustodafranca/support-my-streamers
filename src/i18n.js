@@ -68,6 +68,11 @@ const MESSAGES = {
     saved: 'Salvo!',
     minutes_unit: 'min',
     powered_by: 'powered by',
+    review_prompt:
+      'Curtiu? Uma avaliação na loja ajuda outros streamers a nos encontrarem.',
+    review_rate: 'Avaliar',
+    review_later: 'Agora não',
+    review_aria: 'Convite para avaliar a extensão',
   },
   en: {
     hero_sub: 'Support the streamers you follow by keeping their live running while you do other things.',
@@ -123,6 +128,10 @@ const MESSAGES = {
     saved: 'Saved!',
     minutes_unit: 'min',
     powered_by: 'powered by',
+    review_prompt: 'Enjoying it? A quick store review helps other streamers find us.',
+    review_rate: 'Rate us',
+    review_later: 'Not now',
+    review_aria: 'Extension review invite',
   },
 };
 
