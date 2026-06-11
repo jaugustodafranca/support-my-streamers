@@ -4,14 +4,14 @@
 export const LANGS = ['pt', 'en'];
 
 /** Join streamer display names for status line (e.g. "Gaules e Cogu"). */
-export function formatPlayingNames(lang, names) {
+export const formatPlayingNames = (lang, names) => {
   const list = names?.filter(Boolean) ?? [];
   if (!list.length) return '…';
   const conj = lang === 'en' ? ' and ' : ' e ';
   if (list.length === 1) return list[0];
   if (list.length === 2) return `${list[0]}${conj}${list[1]}`;
   return `${list.slice(0, -1).join(', ')}${conj}${list[list.length - 1]}`;
-}
+};
 
 const MESSAGES = {
   pt: {
@@ -68,6 +68,11 @@ const MESSAGES = {
     saved: 'Salvo!',
     minutes_unit: 'min',
     powered_by: 'powered by',
+    review_prompt:
+      'Curtiu? Uma avaliação na loja ajuda outros streamers a nos encontrarem.',
+    review_rate: 'Avaliar',
+    review_later: 'Agora não',
+    review_aria: 'Convite para avaliar a extensão',
   },
   en: {
     hero_sub: 'Support the streamers you follow by keeping their live running while you do other things.',
@@ -123,30 +128,34 @@ const MESSAGES = {
     saved: 'Saved!',
     minutes_unit: 'min',
     powered_by: 'powered by',
+    review_prompt: 'Enjoying it? A quick store review helps other streamers find us.',
+    review_rate: 'Rate us',
+    review_later: 'Not now',
+    review_aria: 'Extension review invite',
   },
 };
 
-export function t(lang, key, ...args) {
+export const t = (lang, key, ...args) => {
   const dict = MESSAGES[lang] || MESSAGES.pt;
   let value = dict[key];
   if (value === undefined) value = MESSAGES.pt[key];
   return typeof value === 'function' ? value(...args) : value;
-}
+};
 
 /** Rotation interval label: "10 min" or never-switch when 0/∞. */
-export function formatInterval(lang, minutes) {
+export const formatInterval = (lang, minutes) => {
   if (!minutes) return t(lang, 'time_never');
   return `${minutes} ${t(lang, 'minutes_unit')}`;
-}
+};
 
 /** Remaining time as m:ss or h:mm:ss. */
-export function formatCountdown(ms) {
+export const formatCountdown = (ms) => {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+};

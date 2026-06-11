@@ -30,3 +30,9 @@ export const DEFAULT_ROTATION = {
   queueOrder: [], // FIFO: shuffled once at play start, then strict queue order
   status: 'stopped', // 'stopped' | 'playing' | 'paused'
 };
+
+/** Successful play starts before showing the store review invite. */
+export const REVIEW_PROMPT_MIN_PLAYS = 3;
+
+/** Days to wait after "Not now" before asking again. */
+export const REVIEW_PROMPT_SNOOZE_DAYS = 14;

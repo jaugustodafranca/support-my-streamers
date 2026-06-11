@@ -2,7 +2,7 @@
 
 import { TWITCH_AUTH_BASE, SCOPES } from './config.js';
 
-export function buildAuthUrl({ clientId, redirectUri, scopes = SCOPES, state }) {
+export const buildAuthUrl = ({ clientId, redirectUri, scopes = SCOPES, state }) => {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -11,9 +11,9 @@ export function buildAuthUrl({ clientId, redirectUri, scopes = SCOPES, state }) 
   });
   if (state) params.set('state', state);
   return `${TWITCH_AUTH_BASE}?${params.toString()}`;
-}
+};
 
-export function parseAuthRedirect(redirectUrl) {
+export const parseAuthRedirect = (redirectUrl) => {
   if (!redirectUrl) {
     throw new Error(
       'Authentication was cancelled or the redirect URL is missing. If this keeps happening after reinstalling, add the extension Redirect URL in the Twitch Developer Console.',
@@ -34,8 +34,6 @@ export function parseAuthRedirect(redirectUrl) {
     tokenType: params.get('token_type') || 'bearer',
     expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : null,
   };
-}
+};
 
-export function isAuthExpired(auth) {
-  return Boolean(auth?.expiresAt && Date.now() >= auth.expiresAt);
-}
+export const isAuthExpired = (auth) => Boolean(auth?.expiresAt && Date.now() >= auth.expiresAt);

@@ -4,33 +4,53 @@ import { DEFAULT_SETTINGS, DEFAULT_ROTATION } from './config.js';
 
 const area = () => chrome.storage.local;
 
-export async function getAuth(store = area()) {
+export const getAuth = async (store = area()) => {
   const { auth } = await store.get('auth');
   return auth ?? null;
-}
+};
 
-export async function setAuth(auth, store = area()) {
+export const setAuth = async (auth, store = area()) => {
   await store.set({ auth });
-}
+};
 
-export async function clearAuth(store = area()) {
+export const clearAuth = async (store = area()) => {
   await store.remove('auth');
-}
+};
 
-export async function getSettings(store = area()) {
+export const getSettings = async (store = area()) => {
   const { settings } = await store.get('settings');
   return { ...DEFAULT_SETTINGS, ...(settings || {}) };
-}
+};
 
-export async function setSettings(settings, store = area()) {
+export const setSettings = async (settings, store = area()) => {
   await store.set({ settings });
-}
+};
 
-export async function getRotation(store = area()) {
+export const getRotation = async (store = area()) => {
   const { rotation } = await store.get('rotation');
   return { ...DEFAULT_ROTATION, ...(rotation || {}) };
-}
+};
 
-export async function setRotation(rotation, store = area()) {
+export const setRotation = async (rotation, store = area()) => {
   await store.set({ rotation });
-}
+};
+
+const DEFAULT_REVIEW_PROMPT = {
+  playStarts: 0,
+  dismissedAt: null,
+  ratedAt: null,
+};
+
+export const getReviewPrompt = async (store = area()) => {
+  const { reviewPrompt } = await store.get('reviewPrompt');
+  return { ...DEFAULT_REVIEW_PROMPT, ...(reviewPrompt || {}) };
+};
+
+export const setReviewPrompt = async (reviewPrompt, store = area()) => {
+  await store.set({ reviewPrompt });
+};
+
+export const recordPlayStart = async (store = area()) => {
+  const current = await getReviewPrompt(store);
+  await setReviewPrompt({ ...current, playStarts: current.playStarts + 1 }, store);
+};

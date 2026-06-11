@@ -20,7 +20,8 @@ Load the extension unpacked at `chrome://extensions` (Developer mode → Load un
 - **English only** in code: identifiers, comments, error messages, tests, and commit messages.
 - User-visible UI text goes in [`src/i18n.js`](src/i18n.js) — always add both `pt` and `en` keys.
 - Keep pure logic (`rotation.js`, `auth.js`, `twitchApi.js`) free of `chrome.*` calls; all Chrome side effects live in `src/background.js`.
-- Follow KISS / Clean Code — see [.cursor/rules/coding-standards.mdc](.cursor/rules/coding-standards.mdc).
+- Follow KISS / Clean Code — see [.cursor/rules/coding-standards.mdc](.cursor/rules/coding-standards.mdc): **`const` arrows**, **readable names** (no `s`/`c`/`e` in callbacks), **English-only** code.
+- Stack is **JavaScript** (no TypeScript / no build). TypeScript needs an issue and maintainer approval first.
 - Read [AGENTS.md](AGENTS.md) for architecture boundaries and core invariants, and [how-it-works.md](how-it-works.md) for product behavior.
 
 ## Commits & pull requests
