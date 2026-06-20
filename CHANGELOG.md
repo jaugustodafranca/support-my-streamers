@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.2](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.2.1...support-my-streamers-v1.2.2) (2026-06-20)
+
+
+### Bug Fixes
+
+* **ci:** attach store zip artifact on release ([b87b12f](https://github.com/jaugustodafranca/support-my-streamers/commit/b87b12ffa176ffbe8a7877d7d34bc4de1a01b426))
+* **ci:** attach store zip artifact on release ([0b87a40](https://github.com/jaugustodafranca/support-my-streamers/commit/0b87a404e7b1b1e17137efb654292dbd6e5d6fec))
+* **ci:** attach store zip artifact on release ([#9](https://github.com/jaugustodafranca/support-my-streamers/issues/9)) ([b87b12f](https://github.com/jaugustodafranca/support-my-streamers/commit/b87b12ffa176ffbe8a7877d7d34bc4de1a01b426))
+
 ## [1.2.1](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.2.0...support-my-streamers-v1.2.1) (2026-06-20)
 
 
