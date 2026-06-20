@@ -8,8 +8,7 @@ Thanks for your interest in improving **Support My Streamers**!
 git clone https://github.com/jaugustodafranca/support-my-streamers.git
 cd support-my-streamers
 npm install
-cp .env.example .env   # set TWITCH_CLIENT_ID (dev.twitch.tv/console/apps)
-npm run secrets:inject
+npm run extension:oauth-redirect   # register printed URLs in Twitch Developer Console
 npm test
 ```
 
@@ -30,6 +29,31 @@ Load the extension unpacked at `chrome://extensions` (Developer mode → Load un
 - Run `npm test` before opening a PR — all tests must pass.
 - Keep diffs small and focused; don't refactor unrelated code in the same PR.
 - New npm dependencies, manifest permissions, or changes to core invariants (slots, sync/raid rules, audio behavior) need discussion first — open an issue.
+
+## Release flow
+
+Every release is **two pull requests**. That is intentional — code review and version bump stay separate.
+
+| Step | What you do | What happens |
+|------|-------------|--------------|
+| **1. Feature PR** | Open a PR with your changes (`feat:`, `fix:`, …). Review, approve, merge into `main`. | CI runs tests. release-please opens or updates a **Release PR** (do not merge yet). |
+| **2. Release PR** | Review the Release PR title/body (version + `CHANGELOG.md`). Merge it. | GitHub Release is created. CI uploads a **Store zip** (without dev `manifest.key`) to the Chrome Web Store as a **draft**. |
+| **3. Publish (manual)** | Open the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), review the draft, submit for review / publish. | Users get the new version after Google review. |
+
+**Checklist before merging the Release PR**
+
+- [ ] Feature PR merged and tests green on `main`
+- [ ] Release PR version and changelog look correct
+- [ ] You are ready to publish from the Chrome Web Store dashboard (step 3)
+
+**Build locally**
+
+```bash
+npm run build       # Store zip (no manifest "key") — same as CI upload
+npm run build:dev   # Dev zip (keeps manifest "key" for unpacked testing)
+```
+
+Auto-publish from CI is disabled (`publish: false`); the Store API often blocks automatic publish when review or account checks are required.
 
 ## Ethics
 
