@@ -1,9 +1,9 @@
 name: Release & Publish
 
-# On every push to main:
-#  - release-please reads the commits (Conventional Commits) and maintains a
-#    "Release PR" with the next version (patch/minor/major) decided by the messages.
-#  - When you MERGE that PR, a release is created and the extension is published.
+# Two-step release (see CONTRIBUTING.md → "Release flow"):
+#   1. Merge your feature PR into main.
+#   2. Merge the Release PR that release-please opens (version bump + changelog).
+#      That merge uploads a Store zip to the Chrome Web Store (draft — publish in the dashboard).
 on:
   push:
     branches: [main]
@@ -20,17 +20,18 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4
 
-      # The steps below only run when a release was actually created
-      # (i.e. when the Release PR was merged).
       - name: Checkout (version already bumped)
         if: ${{ steps.release.outputs.release_created }}
         uses: actions/checkout@v4
 
-      - name: Package extension
+      - name: Package extension (Store build)
         if: ${{ steps.release.outputs.release_created }}
-        run: zip -r extension.zip manifest.json src icons -x "*.DS_Store"
+        run: |
+          bash scripts/package.sh store
+          VERSION=$(grep '"version"' manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
+          cp "build/support-my-streamers-${VERSION}.zip" extension.zip
 
-      - name: Upload + publish (Chrome Web Store)
+      - name: Upload to Chrome Web Store
         if: ${{ steps.release.outputs.release_created }}
         uses: mnao305/chrome-extension-upload@v5.0.0
         with:
@@ -39,4 +40,4 @@ jobs:
           client-id: ${{ secrets.CHROME_CLIENT_ID }}
           client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
           refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
-          publish: true
+          publish: false

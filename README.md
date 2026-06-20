@@ -97,7 +97,7 @@ Details: raid/offline rules, audio, sync cycle → **[how-it-works.md](how-it-wo
 | | |
 |---|---|
 | **Chrome Web Store** | Install when published |
-| **Unpacked (dev)** | `npm install && npm run secrets:inject`, then `chrome://extensions` → Developer mode → Load unpacked → this folder |
+| **Unpacked (dev)** | `npm install`, then `chrome://extensions` → Developer mode → Load unpacked → this folder |
 
 End users only click **Connect with Twitch** — no Client ID setup.
 
@@ -112,23 +112,21 @@ End users only click **Connect with Twitch** — no Client ID setup.
 
 ```bash
 npm install
-cp .env.example .env
-# TWITCH_CLIENT_ID=... in .env
-npm run secrets:inject
+npm run extension:oauth-redirect   # Twitch OAuth redirect URLs to register
 ```
 
-Register redirect URL in the Twitch app:
+Register both redirect URLs printed by the script in your [Twitch Developer app](https://dev.twitch.tv/console/apps).
 
-`https://<extension-id>.chromiumapp.org/`
-
-**GitHub Actions:** repository secret `TWITCH_CLIENT_ID` (CI injects before zip).  
 Chrome Web Store secrets (`CHROME_*`) stay in GitHub only — not in `.env`.
 
 ```bash
-npm test              # 48 tests
-npm run build         # build/support-my-streamers-<version>.zip
+npm test              # vitest
+npm run build         # Store zip (upload to CWS)
+npm run build:dev     # dev zip (keeps manifest "key")
 npm run icons:active  # regenerate active toolbar icons
 ```
+
+**Releasing:** see [CONTRIBUTING.md → Release flow](CONTRIBUTING.md#release-flow) (feature PR → Release PR → publish in dashboard).
 
 </details>
 
