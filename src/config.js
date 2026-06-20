@@ -1,9 +1,18 @@
 // Application constants.
-//
-// CLIENT_ID lives in config.secrets.js (generated from .env — see .env.example).
-// Still ends up in the published zip; keeping it out of git only obscures the repo.
 
-export { CLIENT_ID } from './config.secrets.js';
+// Twitch public OAuth Client ID (implicit grant — visible in the extension package).
+export const CLIENT_ID = '4zyirev8jnklp5qy6wje4wo2mijjxn';
+
+// Chrome extension IDs — register both OAuth redirect URLs in the Twitch Developer app.
+export const CHROME_EXTENSION_ID_STORE = 'bpjhjcekcenklbleioenphdccfengmmd';
+// Pinned via manifest.json "key" — stable across machines (not path-derived).
+export const CHROME_EXTENSION_ID_DEV = 'oolehnbhbkfbcalfbcfhgdpnpedcfnnf';
+
+export const OAUTH_REDIRECT_URI_STORE = `https://${CHROME_EXTENSION_ID_STORE}.chromiumapp.org/`;
+export const OAUTH_REDIRECT_URI_DEV = `https://${CHROME_EXTENSION_ID_DEV}.chromiumapp.org/`;
+
+/** All redirect URIs to allow in Twitch OAuth settings. */
+export const TWITCH_OAUTH_REDIRECT_URIS = [OAUTH_REDIRECT_URI_STORE, OAUTH_REDIRECT_URI_DEV];
 
 export const SCOPES = ['user:read:follows'];
 export const HELIX_BASE = 'https://api.twitch.tv/helix';

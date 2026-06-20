@@ -62,10 +62,21 @@ describe('rotation', () => {
 describe('auth', () => {
   it('is null by default, then saves and clears', async () => {
     const area = fakeArea();
-    expect(await getAuth(area)).toBeNull();
+    expect(await getAuth(area, null)).toBeNull();
     await setAuth({ accessToken: 't' }, area);
-    expect((await getAuth(area)).accessToken).toBe('t');
-    await clearAuth(area);
-    expect(await getAuth(area)).toBeNull();
+    expect((await getAuth(area, null)).accessToken).toBe('t');
+    await clearAuth(area, null);
+    expect(await getAuth(area, null)).toBeNull();
+  });
+
+  it('migrates auth from legacy local store to session store', async () => {
+    const session = fakeArea();
+    const legacy = fakeArea();
+    await setAuth({ accessToken: 'legacy-token' }, legacy);
+
+    const auth = await getAuth(session, legacy);
+    expect(auth.accessToken).toBe('legacy-token');
+    expect((await getAuth(session, null)).accessToken).toBe('legacy-token');
+    expect(await getAuth(legacy, null)).toBeNull();
   });
 });

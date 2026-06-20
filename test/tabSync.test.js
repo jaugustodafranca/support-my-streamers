@@ -55,11 +55,51 @@ describe('decideTabAction', () => {
       decideTabAction({ supportedLogin: 'a', currentLogin: 'raid', live: [], taken: [] }),
     ).toEqual({ action: 'close' });
   });
+
+  it('avoids duplicate live channel assignments when already taken', () => {
+    expect(
+      decideTabAction({ supportedLogin: 'a', currentLogin: 'a', live: ['a', 'b'], taken: ['a'] }),
+    ).toEqual({ action: 'navigate', login: 'b' });
+  });
+
+  it('closes duplicate live tab when no replacement exists', () => {
+    expect(
+      decideTabAction({ supportedLogin: 'a', currentLogin: 'a', live: ['a'], taken: ['a'] }),
+    ).toEqual({ action: 'close' });
+  });
+
+  it('replaces removed selected channel when another live option exists', () => {
+    expect(
+      decideTabAction({
+        supportedLogin: 'a',
+        currentLogin: 'a',
+        live: ['b', 'c'],
+        taken: [],
+        selectedChannels: ['b', 'c'],
+      }),
+    ).toEqual({ action: 'navigate', login: 'b' });
+  });
+
+  it('closes removed selected channel when no replacement exists', () => {
+    expect(
+      decideTabAction({
+        supportedLogin: 'a',
+        currentLogin: 'a',
+        live: [],
+        taken: [],
+        selectedChannels: [],
+      }),
+    ).toEqual({ action: 'close' });
+  });
 });
 
 describe('unshownLive', () => {
   it('returns live list channels without a tab yet', () => {
     expect(unshownLive(['a', 'b', 'c'], ['a'], 2)).toEqual(['b']);
     expect(unshownLive(['a', 'b'], ['a', 'b'], 2)).toEqual([]);
+  });
+
+  it('does not open extra tabs when shown contains duplicates', () => {
+    expect(unshownLive(['a', 'b'], ['a', 'a'], 2)).toEqual([]);
   });
 });

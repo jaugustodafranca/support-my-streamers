@@ -10,10 +10,8 @@
     "url": "git+https://github.com/jaugustodafranca/support-my-streamers.git"
   },
   "scripts": {
-    "secrets:inject": "node scripts/inject-secrets.mjs",
-    "pretest": "node scripts/inject-secrets.mjs",
-    "prebuild": "node scripts/inject-secrets.mjs",
     "build": "bash scripts/package.sh",
+    "extension:oauth-redirect": "node scripts/print-oauth-redirect.mjs",
     "icons:active": "node scripts/generate-active-icons.mjs",
     "store:assets": "node scripts/generate-store-assets.mjs",
     "test": "vitest run"
