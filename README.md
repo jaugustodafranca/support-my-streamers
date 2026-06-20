@@ -117,16 +117,14 @@ npm run extension:oauth-redirect   # Twitch OAuth redirect URLs to register
 
 Register both redirect URLs printed by the script in your [Twitch Developer app](https://dev.twitch.tv/console/apps).
 
-Chrome Web Store secrets (`CHROME_*`) stay in GitHub only — not in `.env`.
-
 ```bash
 npm test              # vitest
-npm run build         # Store zip (upload to CWS)
+npm run build         # Store zip (same as CI release asset)
 npm run build:dev     # dev zip (keeps manifest "key")
 npm run icons:active  # regenerate active toolbar icons
 ```
 
-**Releasing:** see [CONTRIBUTING.md → Release flow](CONTRIBUTING.md#release-flow) (feature PR → Release PR → publish in dashboard).
+**Releasing:** merge PR to `main` → download zip from [GitHub Releases](https://github.com/jaugustodafranca/support-my-streamers/releases) → upload to Chrome Web Store. See [CONTRIBUTING.md → Release flow](CONTRIBUTING.md#release-flow).
 
 </details>
 

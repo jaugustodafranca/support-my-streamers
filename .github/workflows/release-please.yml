@@ -1,16 +1,13 @@
-name: Release & Publish
+name: Release & Build
 
-# Two-step release (see CONTRIBUTING.md → "Release flow"):
-#   1. Merge your feature PR into main.
-#   2. Merge the Release PR that release-please opens (version bump + changelog).
-#      That merge uploads a Store zip to the Chrome Web Store (draft — publish in the dashboard).
+# Release flow (see CONTRIBUTING.md):
+#   Merge a PR into main → release-please tags a release, bumps version, and attaches the Store zip.
 on:
   push:
     branches: [main]
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   release:
@@ -19,6 +16,8 @@ jobs:
       - name: Release Please
         id: release
         uses: googleapis/release-please-action@v4
+        with:
+          skip-github-pull-request: true
 
       - name: Checkout (version already bumped)
         if: ${{ steps.release.outputs.release_created }}
@@ -29,22 +28,20 @@ jobs:
         run: |
           bash scripts/package.sh store
           VERSION=$(grep '"version"' manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
-          cp "build/support-my-streamers-${VERSION}.zip" extension.zip
+          cp "build/support-my-streamers-${VERSION}.zip" "support-my-streamers-${VERSION}.zip"
+
+      - name: Upload zip to GitHub Release
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.release.outputs.tag_name }}" \
+            "support-my-streamers-*.zip" \
+            --clobber
 
       - name: Upload store zip artifact
         if: ${{ steps.release.outputs.release_created }}
         uses: actions/upload-artifact@v4
         with:
           name: extension-store-zip
-          path: extension.zip
-
-      - name: Upload to Chrome Web Store
-        if: ${{ steps.release.outputs.release_created }}
-        uses: mnao305/chrome-extension-upload@v5.0.0
-        with:
-          file-path: extension.zip
-          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
-          client-id: ${{ secrets.CHROME_CLIENT_ID }}
-          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
-          publish: false
+          path: support-my-streamers-*.zip
