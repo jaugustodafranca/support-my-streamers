@@ -31,6 +31,13 @@ jobs:
           VERSION=$(grep '"version"' manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
           cp "build/support-my-streamers-${VERSION}.zip" extension.zip
 
+      - name: Upload store zip artifact
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-store-zip
+          path: extension.zip
+
       - name: Upload to Chrome Web Store
         if: ${{ steps.release.outputs.release_created }}
         uses: mnao305/chrome-extension-upload@v5.0.0

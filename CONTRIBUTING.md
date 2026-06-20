@@ -55,6 +55,8 @@ npm run build:dev   # Dev zip (keeps manifest "key" for unpacked testing)
 
 Auto-publish from CI is disabled (`publish: false`); the Store API often blocks automatic publish when review or account checks are required.
 
+**GitHub secret:** `CHROME_EXTENSION_ID` (Actions) must match `CHROME_EXTENSION_ID_STORE` in `src/config.js` and the Item ID in the Chrome Web Store dashboard.
+
 ## Ethics
 
 This extension automates *personal* lurking for channels the user already follows. PRs that enable viewbotting, server-directed audiences, or chat automation will not be accepted.
