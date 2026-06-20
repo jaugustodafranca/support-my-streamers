@@ -124,7 +124,7 @@ npm run build:dev     # dev zip (keeps manifest "key")
 npm run icons:active  # regenerate active toolbar icons
 ```
 
-**Releasing:** see [CONTRIBUTING.md → Release flow](CONTRIBUTING.md#release-flow) — merge Release PR → download zip from GitHub Releases → upload to Chrome Web Store.
+**Releasing:** merge PR to `main` → download zip from [GitHub Releases](https://github.com/jaugustodafranca/support-my-streamers/releases) → upload to Chrome Web Store. See [CONTRIBUTING.md → Release flow](CONTRIBUTING.md#release-flow).
 
 </details>
 

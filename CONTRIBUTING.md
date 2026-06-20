@@ -32,18 +32,17 @@ Load the extension unpacked at `chrome://extensions` (Developer mode → Load un
 
 ## Release flow
 
-Every release is **two pull requests**. Code review and version bump stay separate.
+One merge to `main` → automatic GitHub Release + Store zip (no second PR).
 
 | Step | What you do | What happens |
 |------|-------------|--------------|
-| **1. Feature PR** | Open a PR with your changes (`feat:`, `fix:`, …). Review, approve, merge into `main`. | CI runs tests. release-please opens or updates a **Release PR** (do not merge yet). |
-| **2. Release PR** | Review the Release PR (version + `CHANGELOG.md`). Merge it. | GitHub Release is created with **support-my-streamers-X.Y.Z.zip** attached. |
-| **3. Chrome Web Store** | Download the zip from [Releases](https://github.com/jaugustodafranca/support-my-streamers/releases). Upload in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) → Package → Submit / Publish. | Users get the new version after Google review. |
+| **1. PR** | Open a PR with [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, …). Review and merge into `main`. | CI runs tests. release-please bumps the version, updates `CHANGELOG.md`, creates a GitHub Release, and attaches **support-my-streamers-X.Y.Z.zip**. |
+| **2. Chrome Web Store** | Download the zip from [Releases](https://github.com/jaugustodafranca/support-my-streamers/releases). Upload in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) → Package → Submit / Publish. | Users get the new version after Google review. |
 
-**Checklist before merging the Release PR**
+**Notes**
 
-- [ ] Feature PR merged and tests green on `main`
-- [ ] Release PR version and changelog look correct
+- Only `feat:`, `fix:`, and other releasable conventional commits trigger a version bump (`docs:` / `chore:` alone do not).
+- CI does not upload to the Chrome Web Store — no `CHROME_*` secrets needed.
 
 **Build locally** (optional — same zip as CI)
 
@@ -51,8 +50,6 @@ Every release is **two pull requests**. Code review and version bump stay separa
 npm run build       # Store zip (no manifest "key")
 npm run build:dev   # Dev zip (keeps manifest "key" for unpacked testing)
 ```
-
-CI does not upload to the Chrome Web Store — no `CHROME_*` GitHub secrets needed.
 
 ## Ethics
 
