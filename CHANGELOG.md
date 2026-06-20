@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.1.0...support-my-streamers-v1.2.0) (2026-06-20)
+
+
+### Features
+
+* improve queue UX and harden rotation flow ([#5](https://github.com/jaugustodafranca/support-my-streamers/issues/5)) ([fa3833b](https://github.com/jaugustodafranca/support-my-streamers/commit/fa3833b9fe43815d553088721d43e301d2d60901))
+
 ## [1.1.0](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.0.0...support-my-streamers-v1.1.0) (2026-06-11)
 
 
