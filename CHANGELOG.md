@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.2.0...support-my-streamers-v1.2.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* simplify store release flow and strip dev manifest key ([69f2552](https://github.com/jaugustodafranca/support-my-streamers/commit/69f25526613eb03a16dacc8a051fca5475430391))
+* simplify store release flow and strip dev manifest key ([4ef6c0e](https://github.com/jaugustodafranca/support-my-streamers/commit/4ef6c0ed02e0a7a6c13154d3777292f98cb4037a))
+
 ## [1.2.0](https://github.com/jaugustodafranca/support-my-streamers/compare/support-my-streamers-v1.1.0...support-my-streamers-v1.2.0) (2026-06-20)
 
 
