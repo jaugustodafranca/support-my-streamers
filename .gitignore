@@ -2,7 +2,7 @@ node_modules/
 *.log
 .DS_Store
 build/
+extension.pem
 .env
 .env.*
 !.env.example
-src/config.secrets.js

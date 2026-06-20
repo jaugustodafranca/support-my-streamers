@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqHS4F8KDxBsuk6id91ibA/WXiz5G6ZF5FbT9WdbSuyV0aqfMz+TcWbx8tLxL6w40pHJCFK9h18yhhI6M+MjbwDo5x3T/o+2+GwG0ziw9P8kHQ4qlN2ilv2LDUGN0/8om1Choj5DRVjT0SCfUhMzgiZGsL8tUh65HUudVYjC1+l8lFvsrPRF+BEsLY/c7bXnq1tKllgvmLXYaVqSUzwezWUoA2KJ5w9g8l42dKylM5lijm1Sg9OeeMOtrsCYOQKs8WBCj+MPCUtPQOtXR99+uFpk41CsbVAOIOxyXPMj+9KbtQHsa6zk+j0SSZq7DQzdNt2MJKtX+q4u/hZH9HLA6bwIDAQAB",
   "name": "Support My Streamers",
   "version": "1.1.0",
   "description": "Rotaciona entre os streamers que você segue na Twitch, assistindo alguns por vez.",
@@ -12,6 +13,7 @@
   ],
   "host_permissions": [
     "https://api.twitch.tv/*",
+    "https://id.twitch.tv/*",
     "https://www.twitch.tv/*"
   ],
   "background": {

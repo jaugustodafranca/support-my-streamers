@@ -2,7 +2,6 @@
 # Packages the extension for upload to the Chrome Web Store.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-node scripts/inject-secrets.mjs
 VERSION=$(grep '"version"' manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
 OUT="build/support-my-streamers-$VERSION.zip"
 mkdir -p build

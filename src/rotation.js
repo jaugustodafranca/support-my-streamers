@@ -110,9 +110,11 @@ export const nextReplacement = (live, taken) => {
 export const unshownLive = (live, shown, slots) => {
   const shownSet = new Set(shown);
   const limit = Math.min(slots, live.length);
+  const availableSlots = Math.max(0, limit - shown.filter(Boolean).length);
+  if (!availableSlots) return [];
   const out = [];
   for (const login of live) {
-    if (out.length >= limit - shownSet.size) break;
+    if (out.length >= availableSlots) break;
     if (!shownSet.has(login)) out.push(login);
   }
   return out;
@@ -123,19 +125,42 @@ export const unshownLive = (live, shown, slots) => {
  * Raid with no replacement → close.
  * @returns {{ action: 'keep' | 'navigate' | 'close', login?: string }}
  */
-export const decideTabAction = ({ supportedLogin, currentLogin, live, taken }) => {
+export const decideTabAction = ({
+  supportedLogin,
+  currentLogin,
+  live,
+  taken,
+  selectedChannels = [supportedLogin],
+}) => {
   const liveSet = new Set(live);
+  const takenSet = new Set(taken);
+  const selectedSet = new Set(selectedChannels);
+  const isSupportedSelected = selectedSet.has(supportedLogin);
   const onSupportedPage = currentLogin === supportedLogin;
 
-  if (liveSet.has(supportedLogin)) {
+  if (liveSet.has(supportedLogin) && isSupportedSelected && !takenSet.has(supportedLogin)) {
     return onSupportedPage
       ? { action: 'keep', login: supportedLogin }
       : { action: 'navigate', login: supportedLogin };
   }
 
+  // If channel is no longer selected, replace it when possible; otherwise close.
+  if (!isSupportedSelected) {
+    const replacement = nextReplacement(live, taken);
+    if (replacement) {
+      return { action: 'navigate', login: replacement };
+    }
+    return { action: 'close' };
+  }
+
   const replacement = nextReplacement(live, taken);
   if (replacement) {
     return { action: 'navigate', login: replacement };
+  }
+
+  // Prevent duplicate tabs pointing to the same supported live channel.
+  if (liveSet.has(supportedLogin) && takenSet.has(supportedLogin)) {
+    return { action: 'close' };
   }
 
   // Offline with no replacement: keep only if still on supported channel page.

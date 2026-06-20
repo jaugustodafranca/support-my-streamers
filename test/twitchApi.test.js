@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   parseStreams,
+  parseFollowedChannels,
   buildHeaders,
   getFollowedLiveStreams,
+  getFollowedChannels,
   getCurrentUser,
   ApiError,
 } from '../src/twitchApi.js';
@@ -41,6 +43,31 @@ describe('parseStreams', () => {
   });
 });
 
+describe('parseFollowedChannels', () => {
+  it('maps broadcaster identity fields', () => {
+    const json = {
+      data: [
+        {
+          broadcaster_login: 'Foo',
+          broadcaster_name: 'FooTV',
+        },
+      ],
+    };
+
+    expect(parseFollowedChannels(json)).toEqual([
+      {
+        login: 'foo',
+        displayName: 'FooTV',
+      },
+    ]);
+  });
+
+  it('handles payload without data', () => {
+    expect(parseFollowedChannels({})).toEqual([]);
+    expect(parseFollowedChannels(null)).toEqual([]);
+  });
+});
+
 describe('getFollowedLiveStreams', () => {
   it('calls correct endpoint and parses response', async () => {
     const fetchImpl = vi.fn(async () => ({
@@ -72,5 +99,51 @@ describe('getCurrentUser', () => {
     }));
     const user = await getCurrentUser(fetchImpl, 'cid', 'tok');
     expect(user).toEqual({ id: '99', login: 'me', display_name: 'Me' });
+  });
+});
+
+describe('getFollowedChannels', () => {
+  it('paginates and returns all followed channels', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ broadcaster_login: 'foo', broadcaster_name: 'Foo' }],
+          pagination: { cursor: 'abc' },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ broadcaster_login: 'bar', broadcaster_name: 'Bar' }],
+          pagination: {},
+        }),
+      });
+
+    const followed = await getFollowedChannels(fetchImpl, 'cid', 'tok', '123');
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      1,
+      'https://api.twitch.tv/helix/channels/followed?user_id=123&first=100',
+      { headers: { 'Client-Id': 'cid', Authorization: 'Bearer tok' } },
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://api.twitch.tv/helix/channels/followed?user_id=123&first=100&after=abc',
+      { headers: { 'Client-Id': 'cid', Authorization: 'Bearer tok' } },
+    );
+    expect(followed).toEqual([
+      { login: 'foo', displayName: 'Foo' },
+      { login: 'bar', displayName: 'Bar' },
+    ]);
+  });
+
+  it('throws ApiError on non-ok response', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 500 }));
+    await expect(getFollowedChannels(fetchImpl, 'c', 't', '1')).rejects.toBeInstanceOf(ApiError);
+    await expect(getFollowedChannels(fetchImpl, 'c', 't', '1')).rejects.toMatchObject({
+      status: 500,
+    });
   });
 });

@@ -11,6 +11,8 @@ let listRevealed = false;
 let countdownTimer = null;
 let countdownState = null;
 let countdownRefreshing = false;
+let channelSearchQuery = '';
+let currentState = null;
 
 const GEAR_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const TV_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg>`;
@@ -53,13 +55,13 @@ const showToast = (message) => {
   }, 3000);
 };
 
-const selectedLiveCount = (rotation, live) =>
-  rotation.channels.filter((channel) => live.some((stream) => stream.login === channel)).length;
+const selectedLiveCount = (rotation, channels) =>
+  rotation.channels.filter((login) => channels.some((channel) => channel.login === login && channel.isLive)).length;
 
 const isRotating = (state) => {
-  const { rotation, settings, live } = state;
+  const { rotation, settings, channels = [] } = state;
   if (rotation.status !== 'playing') return false;
-  const count = selectedLiveCount(rotation, live);
+  const count = selectedLiveCount(rotation, channels);
   return needsRotation(count, SLOTS) && settings.intervalMinutes > 0;
 };
 
@@ -159,20 +161,20 @@ const startCycleBar = (state) => {
   countdownTimer = setInterval(updateCycleBar, 1000);
 };
 
-const displayNameForLogin = (login, live) => {
-  const stream = live.find((item) => item.login === login);
-  return stream?.displayName || login;
+const displayNameForLogin = (login, channels) => {
+  const channel = channels.find((item) => item.login === login);
+  return channel?.displayName || login;
 };
 
 const statusText = (state) => {
-  const { rotation, settings, live } = state;
+  const { rotation, settings, channels = [] } = state;
   const lang = settings.lang || 'pt';
   if (rotation.status === 'playing') {
     const logins =
       state.playingLogins?.filter(Boolean).length
         ? state.playingLogins
         : rotation.queueOrder?.slice(0, SLOTS) ?? [];
-    const names = logins.map((login) => displayNameForLogin(login, live));
+    const names = logins.map((login) => displayNameForLogin(login, channels));
     const interval = isRotating(state) ? settings.intervalMinutes : 0;
     return t(lang, 'status_playing', names, interval);
   }
@@ -227,10 +229,132 @@ const renderLoading = (lang, messageKey = 'loading') => {
   );
 };
 
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+const matchesChannelQuery = (channel, query) => {
+  if (!query) return true;
+  const login = normalizeText(channel.login);
+  const displayName = normalizeText(channel.displayName);
+  return login.includes(query) || displayName.includes(query);
+};
+
+const sortChannels = (channels, selected) =>
+  [...channels].sort((left, right) => {
+    const leftSelected = selected.has(left.login) ? 1 : 0;
+    const rightSelected = selected.has(right.login) ? 1 : 0;
+    if (leftSelected !== rightSelected) return rightSelected - leftSelected;
+
+    const leftLive = left.isLive ? 1 : 0;
+    const rightLive = right.isLive ? 1 : 0;
+    if (leftLive !== rightLive) return rightLive - leftLive;
+
+    const leftName = (left.displayName || left.login).toLowerCase();
+    const rightName = (right.displayName || right.login).toLowerCase();
+    return leftName.localeCompare(rightName);
+  });
+
+const selectedChannelsList = (channels, selectedLogins) => {
+  const byLogin = new Map(channels.map((channel) => [channel.login, channel]));
+  const fallbackChannel = (login) => ({
+    login,
+    displayName: login,
+    game: '',
+    viewers: 0,
+    isLive: false,
+  });
+  return selectedLogins
+    .map((login) => byLogin.get(login) || fallbackChannel(login))
+    .filter(Boolean);
+};
+
+const availableChannelsList = (channels, selected) =>
+  sortChannels(
+    channels.filter((channel) => !selected.has(channel.login)),
+    selected,
+  );
+
+const buildSelectedQueueItems = (state) => {
+  const channels = state.channels || [];
+  const rotation = state.rotation || { channels: [], queueOrder: [], status: 'stopped' };
+  const byLogin = new Map(channels.map((channel) => [channel.login, channel]));
+  const fallbackChannel = (login) => ({
+    login,
+    displayName: login,
+    game: '',
+    viewers: 0,
+    isLive: false,
+  });
+  const selectedLogins = rotation.channels || [];
+  const selectedSet = new Set(selectedLogins);
+  const activeSet =
+    rotation.status === 'playing'
+      ? new Set((state.playingLogins || []).filter(Boolean))
+      : new Set();
+
+  const liveSelected = selectedLogins.filter((login) => byLogin.get(login)?.isLive);
+  const liveSet = new Set(liveSelected);
+  const queueSource =
+    rotation.status === 'playing' && rotation.queueOrder?.length
+      ? rotation.queueOrder
+      : liveSelected;
+  const queueLive = [];
+  const queueSeen = new Set();
+
+  for (const login of queueSource) {
+    if (!selectedSet.has(login) || !liveSet.has(login) || queueSeen.has(login)) continue;
+    queueLive.push(login);
+    queueSeen.add(login);
+  }
+
+  for (const login of liveSelected) {
+    if (queueSeen.has(login)) continue;
+    queueLive.push(login);
+    queueSeen.add(login);
+  }
+
+  const queuePositionByLogin = new Map(
+    queueLive.map((login, index) => [login, index + 1]),
+  );
+  const offline = selectedLogins.filter((login) => !liveSet.has(login));
+  const orderedLogins = [...queueLive, ...offline];
+
+  return orderedLogins
+    .map((login) => {
+      const channel = byLogin.get(login) || fallbackChannel(login);
+      return {
+        channel,
+        login,
+        queuePosition: queuePositionByLogin.get(login) || null,
+        isActive: activeSet.has(login),
+      };
+    })
+    .filter(Boolean);
+};
+
+const applyChannelSearchFilter = (queryValue) => {
+  const query = normalizeText(queryValue);
+  const channelItems = app.querySelectorAll('[data-available-item]');
+  let visibleCount = 0;
+
+  for (const item of channelItems) {
+    const login = item.dataset.channelLogin || '';
+    const displayName = item.dataset.channelName || '';
+    const matches = matchesChannelQuery({ login, displayName }, query);
+    item.hidden = !matches;
+    if (matches) visibleCount += 1;
+  }
+
+  const emptyState = app.querySelector('[data-search-empty]');
+  if (emptyState) emptyState.hidden = visibleCount > 0;
+};
+
 const render = (state) => {
+  currentState = state;
   stopCountdown();
   window.scrollTo(0, 0);
   app.innerHTML = '';
+  app.classList.remove('app--guest');
+  document.body.classList.remove('body--guest');
   const lang = state?.settings?.lang || 'pt';
   setDocumentLang(lang);
 
@@ -254,6 +378,8 @@ const render = (state) => {
   }
 
   if (!state.authed) {
+    app.classList.add('app--guest');
+    document.body.classList.add('body--guest');
     app.appendChild(htmlElement(topbar(lang)));
     app.appendChild(
       htmlElement(`<div class="hero">
@@ -264,9 +390,14 @@ const render = (state) => {
     return;
   }
 
-  const { rotation, user, live } = state;
+  const { rotation, user, channels = [] } = state;
   const selected = new Set(rotation.channels);
   const playing = rotation.status === 'playing';
+  const liveCount = channels.filter((channel) => channel.isLive).length;
+  const selectedChannels = selectedChannelsList(channels, rotation.channels);
+  const selectedQueueItems = buildSelectedQueueItems(state);
+  const selectedLiveCountValue = selectedChannels.filter((channel) => channel.isLive).length;
+  const availableChannels = availableChannelsList(channels, selected);
 
   app.appendChild(htmlElement(topbar(lang)));
   app.appendChild(
@@ -293,44 +424,123 @@ const render = (state) => {
 
   if (state.error) app.appendChild(htmlElement(`<p class="error-line">${escapeHtml(state.error)}</p>`));
 
-  if (!live.length) {
+  if (!channels.length) {
     app.appendChild(
       htmlElement(`<div class="empty">
         <div class="empty-glyph">${TV_ICON}</div>
-        <p class="empty-title">${escapeHtml(t(lang, 'empty_title'))}</p>
-        <p class="empty-sub">${escapeHtml(t(lang, 'empty_sub'))}</p>
+        <p class="empty-title">${escapeHtml(t(lang, 'empty_following_title'))}</p>
+        <p class="empty-sub">${escapeHtml(t(lang, 'empty_following_sub'))}</p>
       </div>`),
     );
     return;
   }
 
   const main = htmlElement('<div class="popup-main"></div>');
-  main.appendChild(
-    htmlElement(`<div class="section-head">
-      <span class="label"><span class="live-dot"></span>${escapeHtml(t(lang, 'live_now'))}</span>
-      <span class="count">${live.length}</span>
-    </div>`),
-  );
+  const lists = htmlElement('<div class="dual-lists"></div>');
+  const selectedHint = selectedChannels.length
+    ? `<p class="panel-hint">${escapeHtml(t(lang, 'selected_queue_hint'))}</p>`
+    : '';
 
-  const list = htmlElement(`<ul class="channels${listRevealed ? '' : ' reveal'}"></ul>`);
-  live.forEach((stream, index) => {
-    list.appendChild(
-      htmlElement(`<li class="ch" style="--i:${index}">
-        <label class="ch-row">
-          <input type="checkbox" class="vh" data-toggle="${escapeHtml(stream.login)}" ${selected.has(stream.login) ? 'checked' : ''} />
-          <span class="switch"></span>
+  const selectedPanel = htmlElement(`<section class="panel panel-static">
+    <div class="panel-summary panel-summary--static">
+      <span class="panel-title">${escapeHtml(t(lang, 'selected_panel_title'))}</span>
+      <span class="panel-count"><span class="panel-count-live"><span class="panel-count-live-dot"></span>${selectedLiveCountValue}</span> / ${selectedChannels.length}</span>
+    </div>
+    <div class="panel-body panel-body--fixed">
+      ${selectedHint}
+      ${selectedChannels.length ? '<ul class="selected-list" data-selected-list></ul>' : `<p class="panel-empty">${escapeHtml(t(lang, 'selected_empty'))}</p>`}
+    </div>
+  </section>`);
+
+  if (selectedChannels.length) {
+    const selectedList = selectedPanel.querySelector('[data-selected-list]');
+    selectedQueueItems.forEach((item, index) => {
+      const { channel, queuePosition, isActive } = item;
+      const stateClass = channel.isLive ? 'ch-state--live' : 'ch-state--offline';
+      const stateLabel = channel.isLive ? t(lang, 'live_badge') : t(lang, 'offline_badge');
+      const metaLabel = channel.isLive
+        ? channel.game || t(lang, 'live_fallback')
+        : t(lang, 'offline_meta');
+      const queueBadge = queuePosition
+        ? `<span class="ch-badge ch-badge--queue">#${queuePosition}</span>`
+        : '';
+      const activeBadge = isActive
+        ? `<span class="ch-badge ch-badge--active">${escapeHtml(t(lang, 'active_badge'))}</span>`
+        : '';
+
+      selectedList.appendChild(
+        htmlElement(`<li class="ch ch--selected${isActive ? ' ch--active' : ''}" style="--i:${index}">
+          <button type="button" class="ch-row ch-row--button" data-toggle="${escapeHtml(channel.login)}" aria-label="${escapeHtml(t(lang, 'remove_from_selected_aria', channel.displayName || channel.login))}">
+            <span class="ch-info">
+              <span class="ch-headline">
+                <span class="ch-name">${escapeHtml(channel.displayName || channel.login)}</span>
+                ${queueBadge}
+                ${activeBadge}
+                <span class="ch-state ${stateClass}">${escapeHtml(stateLabel)}</span>
+              </span>
+              <span class="ch-meta">${escapeHtml(metaLabel)}</span>
+            </span>
+            ${channel.isLive ? `<span class="ch-viewers">${formatViewers(channel.viewers)}</span>` : ''}
+          </button>
+        </li>`),
+      );
+    });
+  }
+  lists.appendChild(selectedPanel);
+
+  const availablePanel = htmlElement(`<section class="panel panel-static panel--channels">
+    <div class="panel-summary panel-summary--static">
+      <span class="panel-title"><span class="live-dot"></span>${escapeHtml(t(lang, 'channels_panel_title'))}</span>
+      <span class="panel-count"><span class="panel-count-live"><span class="panel-count-live-dot"></span>${liveCount}</span> / ${channels.length}</span>
+    </div>
+    <div class="panel-body panel-body--fixed">
+      <div class="search-wrap">
+        <input
+          class="search-input"
+          type="search"
+          data-search
+          value="${escapeHtml(channelSearchQuery)}"
+          placeholder="${escapeHtml(t(lang, 'search_channels_placeholder'))}"
+          aria-label="${escapeHtml(t(lang, 'search_channels_aria'))}"
+        />
+      </div>
+      <ul class="channels${listRevealed ? '' : ' reveal'}" data-available-list></ul>
+      <div class="empty empty--compact" data-search-empty hidden>
+        <p class="empty-title">${escapeHtml(t(lang, 'search_empty_title'))}</p>
+        <p class="empty-sub">${escapeHtml(t(lang, 'search_empty_sub'))}</p>
+      </div>
+    </div>
+  </section>`);
+
+  const availableList = availablePanel.querySelector('[data-available-list]');
+  availableChannels.forEach((channel, index) => {
+    const stateClass = channel.isLive ? 'ch-state--live' : 'ch-state--offline';
+    const stateLabel = channel.isLive ? t(lang, 'live_badge') : t(lang, 'offline_badge');
+    const metaLabel = channel.isLive
+      ? channel.game || t(lang, 'live_fallback')
+      : t(lang, 'offline_meta');
+
+    availableList.appendChild(
+      htmlElement(`<li class="ch" style="--i:${index}" data-available-item data-channel-login="${escapeHtml(channel.login)}" data-channel-name="${escapeHtml(channel.displayName || channel.login)}">
+        <button type="button" class="ch-row ch-row--button" data-toggle="${escapeHtml(channel.login)}" aria-label="${escapeHtml(t(lang, 'add_to_selected_aria', channel.displayName || channel.login))}">
           <span class="ch-info">
-            <span class="ch-name">${escapeHtml(stream.displayName || stream.login)}</span>
-            <span class="ch-meta">${escapeHtml(stream.game || t(lang, 'live_fallback'))}</span>
+            <span class="ch-headline">
+              <span class="ch-name">${escapeHtml(channel.displayName || channel.login)}</span>
+              <span class="ch-state ${stateClass}">${escapeHtml(stateLabel)}</span>
+            </span>
+            <span class="ch-meta">${escapeHtml(metaLabel)}</span>
           </span>
-          <span class="ch-viewers">${formatViewers(stream.viewers)}</span>
-        </label>
+          ${channel.isLive ? `<span class="ch-viewers">${formatViewers(channel.viewers)}</span>` : ''}
+        </button>
       </li>`),
     );
   });
-  main.appendChild(list);
+
+  lists.appendChild(availablePanel);
+  main.appendChild(lists);
   app.appendChild(main);
   listRevealed = true;
+  applyChannelSearchFilter(channelSearchQuery);
 };
 
 const ACTION_TO_MSG = {
@@ -341,6 +551,47 @@ const ACTION_TO_MSG = {
 };
 
 const handleAppClick = async (event) => {
+  const toggleTarget = event.target.closest('[data-toggle]');
+  if (toggleTarget) {
+    const login = toggleTarget.dataset.toggle;
+    const selectedList = app.querySelector('[data-selected-list]');
+    const availableList = app.querySelector('[data-available-list]');
+    const selectedScrollTop = selectedList?.scrollTop ?? 0;
+    const availableScrollTop = availableList?.scrollTop ?? 0;
+    const previousState = currentState;
+
+    toggleTarget.disabled = true;
+    try {
+      const result = await send({ type: 'TOGGLE_CHANNEL', login });
+      if (result?.error) {
+        showToast(result.error);
+        return;
+      }
+
+      const mergedState =
+        previousState && result?.rotation
+          ? {
+              ...previousState,
+              rotation: result.rotation,
+              playingLogins:
+                result.playingLogins ?? previousState.playingLogins ?? [],
+            }
+          : await send({ type: 'GET_STATE' });
+
+      render(mergedState);
+      const nextSelectedList = app.querySelector('[data-selected-list]');
+      const nextAvailableList = app.querySelector('[data-available-list]');
+      if (nextSelectedList) nextSelectedList.scrollTop = selectedScrollTop;
+      if (nextAvailableList) nextAvailableList.scrollTop = availableScrollTop;
+    } catch (error) {
+      if (previousState) render(previousState);
+      showToast(String(error.message || error));
+    } finally {
+      toggleTarget.disabled = false;
+    }
+    return;
+  }
+
   const trigger = event.target.closest('[data-action]');
   if (!trigger) return;
   const action = trigger.dataset.action;
@@ -396,24 +647,13 @@ const handleAppChange = async (event) => {
   if (event.target.dataset?.lang !== undefined) {
     const state = await send({ type: 'SET_SETTINGS', settings: { lang: event.target.value } });
     render(state);
-    return;
   }
+};
 
-  const login = event.target.dataset?.toggle;
-  if (!login) return;
-
-  const checkbox = event.target;
-  try {
-    const state = await send({ type: 'TOGGLE_CHANNEL', login });
-    if (state?.error) {
-      checkbox.checked = !checkbox.checked;
-      showToast(state.error);
-    }
-    // Keep layout stable: checkbox already reflects the toggle; no full re-render.
-  } catch (error) {
-    checkbox.checked = !checkbox.checked;
-    showToast(String(error.message || error));
-  }
+const handleAppInput = (event) => {
+  if (event.target.dataset?.search === undefined) return;
+  channelSearchQuery = event.target.value;
+  applyChannelSearchFilter(channelSearchQuery);
 };
 
 const init = async () => {
@@ -432,5 +672,6 @@ const init = async () => {
 
 app.addEventListener('click', handleAppClick);
 app.addEventListener('change', handleAppChange);
+app.addEventListener('input', handleAppInput);
 
 init();

@@ -1,14 +1,25 @@
 // Service worker: auth, live follows, tab rotation. All chrome.* side effects live here.
 
-import { CLIENT_ID, TAB_GROUP_TITLE, SLOTS, HEALTH_CHECK_MINUTES } from './config.js';
+import {
+  CLIENT_ID,
+  OAUTH_REDIRECT_URI_STORE,
+  TAB_GROUP_TITLE,
+  SLOTS,
+  HEALTH_CHECK_MINUTES,
+} from './config.js';
 import { buildAuthUrl, parseAuthRedirect, isAuthExpired } from './auth.js';
-import { getCurrentUser, getFollowedLiveStreams } from './twitchApi.js';
+import {
+  getCurrentUser,
+  getFollowedChannels,
+  getFollowedLiveStreams,
+} from './twitchApi.js';
 import {
   parseChannelLogin,
   decideTabAction,
   unshownLive,
   needsRotation,
   initFifoRotation,
+  syncFifoQueue,
   tickFifoRotation,
 } from './rotation.js';
 import { shouldShowReviewPrompt } from './reviewPrompt.js';
@@ -50,7 +61,7 @@ const restoreRuntime = async () => {
   };
 };
 
-const reconcileTabs = async (live, settings) => {
+const reconcileTabs = async (live, selectedChannels, settings) => {
   const newTabIds = [];
   const newTabLogins = [];
   const taken = [];
@@ -71,6 +82,7 @@ const reconcileTabs = async (live, settings) => {
       currentLogin,
       live,
       taken,
+      selectedChannels,
     });
 
     if (decision.action === 'close') {
@@ -109,7 +121,14 @@ const fillEmptySlots = async (live, settings) => {
   for (const login of toOpen) {
     const createProps = { url: watchUrl(login), active: false };
     if (runtime.groupId) createProps.groupId = runtime.groupId;
-    const tab = await chrome.tabs.create(createProps);
+    let tab;
+    try {
+      tab = await chrome.tabs.create(createProps);
+    } catch {
+      // Group may have been closed manually; retry without group assignment.
+      runtime.groupId = null;
+      tab = await chrome.tabs.create({ url: watchUrl(login), active: false });
+    }
     await applyTabAudio(tab.id, settings);
     runtime.tabIds.push(tab.id);
     runtime.tabLogins.push(login);
@@ -130,9 +149,10 @@ const fillEmptySlots = async (live, settings) => {
   await persistRuntime();
 };
 
-const syncOpenTabs = async (live, settings) => {
-  await reconcileTabs(live, settings);
+const syncOpenTabs = async (live, selectedChannels, settings) => {
+  await reconcileTabs(live, selectedChannels, settings);
   await fillEmptySlots(live, settings);
+  await applyAudioToAllTabs(settings);
   await persistRuntime();
 };
 
@@ -147,14 +167,19 @@ const launchTwitchAuth = async (clientId) => {
   const url = buildAuthUrl({ clientId, redirectUri });
   let redirect;
   try {
-    redirect = await chrome.identity.launchWebAuthFlow({ url, interactive: true });
+    redirect = await chrome.identity.launchWebAuthFlow({
+      url,
+      interactive: true,
+      abortOnLoadForNonInteractive: false,
+    });
   } catch (error) {
     const message = String(error?.message || error);
-    const redirectHint =
-      /redirect|authorization|oauth/i.test(message)
-        ? ` Twitch OAuth Redirect URL must include: ${redirectUri}`
-        : '';
-    throw new Error(`${message}${redirectHint}`);
+    if (/redirect|authorization|oauth/i.test(message)) {
+      throw new Error(
+        `${message} Add this exact Redirect URL in the Twitch app (dev.twitch.tv): ${redirectUri}`,
+      );
+    }
+    throw new Error(message);
   }
   return parseAuthRedirect(redirect);
 };
@@ -206,22 +231,72 @@ const ensureUserId = async (auth, clientId) => {
   return next;
 };
 
-const fetchLiveFollows = async () => {
+const withValidAuth = async () => {
   const auth = await store.getAuth();
-  if (!auth || !CLIENT_ID) return [];
+  if (!auth || !CLIENT_ID) return null;
   if (isAuthExpired(auth)) {
     await store.clearAuth();
-    return [];
+    return null;
   }
-  const withId = await ensureUserId(auth, CLIENT_ID);
-  return getFollowedLiveStreams(fetch, CLIENT_ID, withId.accessToken, withId.userId);
+  return ensureUserId(auth, CLIENT_ID);
+};
+
+const fetchLiveFollows = async (auth = null) => {
+  const resolvedAuth = auth || (await withValidAuth());
+  if (!resolvedAuth) return [];
+  return getFollowedLiveStreams(fetch, CLIENT_ID, resolvedAuth.accessToken, resolvedAuth.userId);
+};
+
+const fetchFollowedChannelsList = async (auth = null) => {
+  const resolvedAuth = auth || (await withValidAuth());
+  if (!resolvedAuth) return [];
+  return getFollowedChannels(fetch, CLIENT_ID, resolvedAuth.accessToken, resolvedAuth.userId);
+};
+
+const mergeFollowedChannels = (followedChannels, liveStreams) => {
+  const liveByLogin = new Map(
+    liveStreams.map((stream) => [stream.login, stream]),
+  );
+  const merged = [];
+  const seen = new Set();
+
+  for (const channel of followedChannels) {
+    if (!channel.login || seen.has(channel.login)) continue;
+    const live = liveByLogin.get(channel.login);
+    merged.push({
+      login: channel.login,
+      displayName: live?.displayName || channel.displayName || channel.login,
+      game: live?.game || '',
+      viewers: live?.viewers || 0,
+      isLive: !!live,
+    });
+    seen.add(channel.login);
+  }
+
+  // Defensive fallback: include live channels missing from followed endpoint response.
+  for (const stream of liveStreams) {
+    if (seen.has(stream.login)) continue;
+    merged.push({
+      login: stream.login,
+      displayName: stream.displayName || stream.login,
+      game: stream.game || '',
+      viewers: stream.viewers || 0,
+      isLive: true,
+    });
+  }
+
+  return merged;
+};
+
+const liveSelectedFrom = (channels, live) => {
+  const liveLogins = new Set(live.map((stream) => stream.login));
+  return channels.filter((channel) => liveLogins.has(channel));
 };
 
 const liveSelected = async () => {
   const rotation = await store.getRotation();
   const live = await fetchLiveFollows();
-  const liveLogins = new Set(live.map((stream) => stream.login));
-  return rotation.channels.filter((channel) => liveLogins.has(channel));
+  return liveSelectedFrom(rotation.channels, live);
 };
 
 const closeTabs = async () => {
@@ -329,6 +404,81 @@ const createFreshWindow = async (logins, settings) => {
   await persistRuntime();
 };
 
+const findOpenTabsByLoginForWindow = async (targetLogins) => {
+  const targetSet = new Set(targetLogins);
+  const twitchTabs = await chrome.tabs.query({
+    url: ['https://www.twitch.tv/*', 'https://twitch.tv/*'],
+  });
+
+  const byWindow = new Map();
+  for (const tab of twitchTabs) {
+    const login = parseChannelLogin(tab.url);
+    if (!login || !targetSet.has(login) || tab.id === undefined || tab.windowId === undefined) {
+      continue;
+    }
+    if (!byWindow.has(tab.windowId)) byWindow.set(tab.windowId, new Map());
+    const loginToTabId = byWindow.get(tab.windowId);
+    if (!loginToTabId.has(login)) loginToTabId.set(login, tab.id);
+  }
+
+  if (!byWindow.size) return null;
+
+  let selectedWindowId = null;
+  let selectedMap = null;
+  for (const [windowId, loginToTabId] of byWindow.entries()) {
+    if (!selectedMap || loginToTabId.size > selectedMap.size) {
+      selectedWindowId = windowId;
+      selectedMap = loginToTabId;
+    }
+  }
+
+  return { windowId: selectedWindowId, loginToTabId: selectedMap };
+};
+
+const adoptOpenStreamerTabs = async (logins, settings) => {
+  try {
+    const candidate = await findOpenTabsByLoginForWindow(logins);
+    if (!candidate) return false;
+
+    const { windowId, loginToTabId } = candidate;
+    const tabIds = [];
+    for (const login of logins) {
+      const existingTabId = loginToTabId.get(login);
+      if (existingTabId !== undefined) {
+        tabIds.push(existingTabId);
+        continue;
+      }
+      const tab = await chrome.tabs.create({
+        url: watchUrl(login),
+        active: false,
+        windowId,
+      });
+      tabIds.push(tab.id);
+    }
+
+    let groupId = null;
+    if (tabIds.length) {
+      groupId = await chrome.tabs.group({ tabIds });
+      await labelTabGroup(groupId);
+    }
+
+    for (let index = 0; index < logins.length; index++) {
+      await chrome.tabs.update(tabIds[index], {
+        url: watchUrl(logins[index]),
+        muted: tabMuted(settings),
+      });
+      await applyTabAudio(tabIds[index], settings);
+    }
+
+    runtime = { tabIds, tabLogins: [...logins], groupId };
+    await persistRuntime();
+    if (groupId !== null) await closeSmsGroupsExcept(groupId);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const adoptGroup = async (groupId, logins, settings) => {
   const tabs = await chrome.tabs.query({ groupId });
   const tabIds = tabs.map((tab) => tab.id).slice(0, SLOTS);
@@ -423,6 +573,10 @@ const ensureWindow = async (logins, settings) => {
     return assignWindow(logins, settings);
   }
 
+  if (await adoptOpenStreamerTabs(logins, settings)) {
+    return;
+  }
+
   const groups = await chrome.tabGroups.query({ title: TAB_GROUP_TITLE });
   if (groups.length) {
     const keepId = groups[0].id;
@@ -485,8 +639,13 @@ const resume = async () => {
   const live = await liveSelected();
   if (!runtime.tabIds.length && live.length) {
     if (rotation.queueOrder?.length) {
-      const showing = rotation.queueOrder.slice(0, Math.min(SLOTS, rotation.queueOrder.length));
+      const queueOrder = syncFifoQueue(rotation.queueOrder, live);
+      const showing = queueOrder.slice(0, Math.min(SLOTS, queueOrder.length));
       await ensureWindow(showing, settings);
+      await store.setRotation({
+        ...rotation,
+        queueOrder,
+      });
     } else {
       const fifo = initFifoRotation(live, SLOTS);
       await ensureWindow(fifo.showing, settings);
@@ -496,7 +655,7 @@ const resume = async () => {
       });
     }
   } else if (runtime.tabIds.length) {
-    await syncOpenTabs(live, settings);
+    await syncOpenTabs(live, rotation.channels, settings);
   }
   await applyAudioToAllTabs(settings);
   await store.setRotation({ ...rotation, status: 'playing' });
@@ -536,6 +695,7 @@ const stop = async () => {
 const syncCycle = async () => {
   const rotation = await store.getRotation();
   if (rotation.status !== 'playing') return;
+  let currentRotation = rotation;
   const settings = await store.getSettings();
 
   if (!runtime.tabIds.length) await restoreRuntime();
@@ -543,7 +703,18 @@ const syncCycle = async () => {
   // Selected + followed channels that are live per Twitch API.
   const live = await liveSelected();
 
-  await syncOpenTabs(live, settings);
+  if (!runtime.tabIds.length && live.length) {
+    const queueOrder = syncFifoQueue(
+      currentRotation.queueOrder?.length ? currentRotation.queueOrder : live,
+      live,
+    );
+    const showing = queueOrder.slice(0, Math.min(SLOTS, queueOrder.length));
+    await ensureWindow(showing, settings);
+    currentRotation = { ...currentRotation, queueOrder };
+    await store.setRotation(currentRotation);
+  }
+
+  await syncOpenTabs(live, currentRotation.channels, settings);
 
   // FIFO rotation: shuffle once at start, then queue order; live check each cycle.
   if (settings.intervalMinutes > 0 && needsRotation(live.length, SLOTS)) {
@@ -551,14 +722,15 @@ const syncCycle = async () => {
     const next = tickFifoRotation({
       liveLogins: live,
       showing,
-      queueOrder: rotation.queueOrder?.length ? rotation.queueOrder : live,
+      queueOrder: currentRotation.queueOrder?.length ? currentRotation.queueOrder : live,
       slots: SLOTS,
     });
     if (next) {
       if (next.changed) {
         await assignWindow(next.showing, settings);
       }
-      await store.setRotation({ ...rotation, queueOrder: next.queueOrder });
+      currentRotation = { ...currentRotation, queueOrder: next.queueOrder };
+      await store.setRotation(currentRotation);
     }
   }
 
@@ -571,13 +743,25 @@ const toggleChannel = async (login) => {
   const set = new Set(rotation.channels);
   if (set.has(login)) set.delete(login);
   else set.add(login);
-  await store.setRotation({ ...rotation, channels: [...set] });
+  const nextRotation = { ...rotation, channels: [...set] };
 
-  if (rotation.status === 'playing' && runtime.tabIds.length) {
-    const settings = await store.getSettings();
-    const live = await liveSelected();
-    await syncOpenTabs(live, settings);
+  if (rotation.status !== 'playing') {
+    await store.setRotation(nextRotation);
+    return;
   }
+
+  await store.setRotation(nextRotation);
+  if (!runtime.tabIds.length) await restoreRuntime();
+
+  const settings = await store.getSettings();
+  const live = liveSelectedFrom(nextRotation.channels, await fetchLiveFollows());
+  if (runtime.tabIds.length) {
+    await syncOpenTabs(live, nextRotation.channels, settings);
+  }
+
+  const queueSeed = nextRotation.queueOrder?.length ? nextRotation.queueOrder : runtime.tabLogins;
+  const queueOrder = syncFifoQueue(queueSeed, live);
+  await store.setRotation({ ...nextRotation, queueOrder });
 };
 
 const applySettings = async (partial) => {
@@ -640,8 +824,11 @@ const getState = async () => {
   const playingLogins =
     rotation.status === 'playing' ? await getPlayingLogins() : [];
   const reviewPrompt = await store.getReviewPrompt();
+  const oauthRedirectUri = chrome.identity.getRedirectURL();
   const base = {
     clientIdSet: !!CLIENT_ID,
+    oauthRedirectUri,
+    isStoreBuild: oauthRedirectUri === OAUTH_REDIRECT_URI_STORE,
     settings,
     rotation,
     nextCycleAt,
@@ -650,27 +837,39 @@ const getState = async () => {
   };
 
   if (!auth || !CLIENT_ID) {
-    return { ...base, authed: false, user: null, live: [] };
+    return { ...base, authed: false, user: null, live: [], channels: [] };
   }
 
   try {
-    const live = await fetchLiveFollows();
+    const validAuth = await withValidAuth();
+    if (!validAuth) {
+      return { ...base, authed: false, user: null, live: [], channels: [] };
+    }
+
+    const [followedChannels, live] = await Promise.all([
+      fetchFollowedChannelsList(validAuth),
+      fetchLiveFollows(validAuth),
+    ]);
+    const channels = mergeFollowedChannels(followedChannels, live);
+
     return {
       ...base,
       authed: true,
-      user: { login: auth.login, displayName: auth.displayName },
+      user: { login: validAuth.login, displayName: validAuth.displayName },
       live,
+      channels,
     };
   } catch (error) {
     if (error.status === 401) {
       await store.clearAuth();
-      return { ...base, authed: false, user: null, live: [] };
+      return { ...base, authed: false, user: null, live: [], channels: [] };
     }
     return {
       ...base,
       authed: true,
       user: { login: auth.login, displayName: auth.displayName },
       live: [],
+      channels: [],
       error: String(error.message || error),
     };
   }
@@ -686,6 +885,32 @@ const withState = async (fn) => {
   }
   const state = await getState();
   return error ? { ...state, error } : state;
+};
+
+const withAck = async (fn) => {
+  try {
+    await fn();
+    return { ok: true };
+  } catch (caught) {
+    return { error: String(caught.message || caught) };
+  }
+};
+
+const withAckAndSnapshot = async (fn, snapshot) => {
+  try {
+    await fn();
+    const data = await snapshot();
+    return { ok: true, ...data };
+  } catch (caught) {
+    return { error: String(caught.message || caught) };
+  }
+};
+
+const getToggleSnapshot = async () => {
+  const rotation = await store.getRotation();
+  const playingLogins =
+    rotation.status === 'playing' ? await getPlayingLogins() : [];
+  return { rotation, playingLogins };
 };
 
 const handle = async (message) => {
@@ -710,7 +935,7 @@ const handle = async (message) => {
         await store.clearAuth();
       });
     case 'TOGGLE_CHANNEL':
-      return withState(() => toggleChannel(message.login));
+      return withAckAndSnapshot(() => toggleChannel(message.login), getToggleSnapshot);
     case 'SET_SETTINGS':
       return withState(() => applySettings(message.settings));
     case 'PLAY':
